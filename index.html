@@ -11,17 +11,19 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
+      /* --- UPDATED COLORS FOR DARK MODE --- */
       :root {
-        --insta-gray: #dbdbdb;
+        --insta-bg: #000000; /* Changed from white to black */
+        --insta-gray: #363636; /* Darker border color */
         --insta-blue: #0095f6;
-        --insta-bg: #ffffff;
-        --msg-received: #efefef;
+        --msg-received: #262626; /* Dark gray bubble for received msgs */
         --msg-sent: #3797f0;
-        --text-main: #262626;
+        --text-main: #f5f5f5; /* White text */
       }
 
       body {
-        background-color: #fafafa;
+        background-color: #121212;
+        color: var(--text-main);
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
           Helvetica, Arial, sans-serif;
         margin: 0;
@@ -38,12 +40,12 @@
         flex-direction: column;
         border-left: 1px solid var(--insta-gray);
         border-right: 1px solid var(--insta-gray);
-        box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.5); /* Darker shadow */
       }
 
       /* --- Instagram Header & Active List --- */
       header {
-        background: white;
+        background: var(--insta-bg); /* Use variable instead of 'white' */
         border-bottom: 1px solid var(--insta-gray);
         padding: 10px 0;
         position: sticky;
@@ -65,10 +67,10 @@
         gap: 15px;
         padding: 5px 15px;
         overflow-x: auto;
-        scrollbar-width: none; /* Firefox */
+        scrollbar-width: none;
       }
       #activeList::-webkit-scrollbar {
-        display: none; /* Chrome/Safari */
+        display: none;
       }
 
       .user-status {
@@ -84,7 +86,6 @@
         width: 48px;
         height: 48px;
         border-radius: 50%;
-        /* Instagram Gradient Ring */
         background: linear-gradient(
           45deg,
           #f09433 0%,
@@ -100,7 +101,7 @@
       .avatar-inner {
         width: 100%;
         height: 100%;
-        background: white;
+        background: var(--insta-bg); /* Changed from white to black */
         border-radius: 50%;
         display: flex;
         align-items: center;
@@ -114,8 +115,8 @@
       .status-dot {
         height: 13px;
         width: 13px;
-        background-color: #1ed760; /* Active Green */
-        border: 2px solid white;
+        background-color: #1ed760;
+        border: 2px solid var(--insta-bg); /* Border matches bg */
         border-radius: 50%;
         position: absolute;
         bottom: 22px;
@@ -169,9 +170,10 @@
         font-size: 10px;
         font-weight: 600;
         margin-bottom: 2px;
-        opacity: 0.5;
+        opacity: 0.7;
+        color: #aaa; /* Lighter text for names */
         display: block;
-        margin-left: 10px; /* Indent slightly for received messages */
+        margin-left: 10px;
       }
 
       /* --- Input Bar --- */
@@ -181,7 +183,7 @@
         display: flex;
         align-items: center;
         gap: 10px;
-        background: white;
+        background: var(--insta-bg); /* Changed from white */
       }
 
       #msgInput {
@@ -191,12 +193,13 @@
         border-radius: 25px;
         outline: none;
         font-size: 15px;
-        background: #efefef;
+        background: #262626; /* Dark gray input */
+        color: white; /* White typing text */
       }
 
       #msgInput:focus {
-        background: white;
-        border-color: #ccc;
+        background: #262626;
+        border-color: #555;
       }
 
       #sendBtn {
@@ -210,7 +213,7 @@
       }
 
       #sendBtn:hover {
-        opacity: 0.7;
+        color: white; /* Hover effect for dark mode */
       }
     </style>
   </head>
@@ -226,7 +229,7 @@
           style="
             text-align: center;
             padding: 20px;
-            color: #ccc;
+            color: #666; /* Darker loading text */
             font-size: 12px;
           "
         >
@@ -247,7 +250,6 @@
 
     <script>
       // --- 1. CONFIGURATION ---
-      // Your actual credentials are inserted here:
       const SUPABASE_URL = "https://xyvyocpdekeewoyvomuv.supabase.co";
       const SUPABASE_KEY =
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5dnlvY3BkZWtlZXdveXZvbXV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxNjc0NTEsImV4cCI6MjA4NTc0MzQ1MX0.8VkWO7vxdm4GrMp2FCeF4Ds7sxUVWo1AxOrxbeu4f4Y";
@@ -255,7 +257,7 @@
       const { createClient } = supabase;
       const _supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-      // --- 2. MAIN LOGIC (Wraps everything to ensure HTML loads first) ---
+      // --- 2. MAIN LOGIC ---
       window.addEventListener("DOMContentLoaded", () => {
         console.log("Chat initialized.");
 
@@ -266,7 +268,6 @@
           localStorage.setItem("chat-user", myName);
         }
 
-        // Get HTML Elements
         const msgInput = document.getElementById("msgInput");
         const sendBtn = document.getElementById("sendBtn");
         const msgDiv = document.getElementById("messages");
@@ -278,7 +279,6 @@
           const div = document.createElement("div");
           div.className = `message ${isMe ? "sent" : "received"}`;
 
-          // Only show name label if it's NOT me
           let nameLabel = "";
           if (!isMe) {
             nameLabel = `<span class="sender-tag">${data.sender}</span>`;
@@ -290,7 +290,7 @@
                 `;
 
           msgDiv.appendChild(div);
-          msgDiv.scrollTop = msgDiv.scrollHeight; // Auto-scroll to bottom
+          msgDiv.scrollTop = msgDiv.scrollHeight;
         }
 
         // --- 3. FETCH HISTORY ---
@@ -305,10 +305,10 @@
             msgDiv.innerHTML =
               '<div style="text-align:center; color:red;">Connection failed.</div>';
           } else {
-            msgDiv.innerHTML = ""; // Clear loading text
+            msgDiv.innerHTML = "";
             if (data.length === 0) {
               msgDiv.innerHTML =
-                '<div style="text-align:center; color:#ccc; margin-top:20px;">No messages yet. Say hi! 👋</div>';
+                '<div style="text-align:center; color:#666; margin-top:20px;">No messages yet. Say hi! 👋</div>';
             }
             data.forEach(renderMessage);
           }
@@ -319,7 +319,7 @@
           const content = msgInput.value.trim();
           if (!content) return;
 
-          msgInput.value = ""; // Clear input immediately
+          msgInput.value = "";
 
           const { error } = await _supabase
             .from("messages")
@@ -328,7 +328,7 @@
           if (error) alert("Failed to send message!");
         }
 
-        // --- 5. PRESENCE (Active Users List) ---
+        // --- 5. PRESENCE ---
         const presenceChannel = _supabase.channel("online-users", {
           config: { presence: { key: myName } },
         });
@@ -379,14 +379,12 @@
         // --- 7. EVENT LISTENERS ---
         sendBtn.onclick = sendMessage;
 
-        // Allow "Enter" key to send
         msgInput.addEventListener("keydown", (e) => {
           if (e.key === "Enter") {
             sendMessage();
           }
         });
 
-        // Start everything
         fetchHistory();
       });
     </script>
