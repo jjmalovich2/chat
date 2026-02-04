@@ -2,19 +2,26 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Our Private Chat</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>Ava and JJ 💖</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <style>
       :root {
-        --primary-color: #ff4d6d;
-        --bg-color: #fff0f3;
-        --chat-bg: #ffffff;
-        --received-msg: #f1f1f1;
-        --sent-msg: #ff4d6d;
+        --insta-gray: #dbdbdb;
+        --insta-blue: #0095f6;
+        --insta-bg: #ffffff;
+        --msg-received: #efefef;
+        --msg-sent: #3797f0;
+        --text-main: #262626;
       }
 
       body {
-        background-color: var(--bg-color);
+        background-color: #fafafa;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
           Helvetica, Arial, sans-serif;
         margin: 0;
@@ -25,264 +32,363 @@
 
       .chat-wrapper {
         width: 100%;
-        max-width: 500px;
-        background: var(--chat-bg);
+        max-width: 450px;
+        background: var(--insta-bg);
         display: flex;
         flex-direction: column;
+        border-left: 1px solid var(--insta-gray);
+        border-right: 1px solid var(--insta-gray);
         box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
       }
 
-      /* Header */
+      /* --- Instagram Header & Active List --- */
       header {
-        padding: 15px;
         background: white;
-        border-bottom: 1px solid #eee;
+        border-bottom: 1px solid var(--insta-gray);
+        padding: 10px 0;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+      }
+
+      .header-main h3 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 600;
+        text-align: center;
+        padding-bottom: 10px;
+        color: var(--text-main);
+      }
+
+      #activeList {
+        display: flex;
+        gap: 15px;
+        padding: 5px 15px;
+        overflow-x: auto;
+        scrollbar-width: none; /* Firefox */
+      }
+      #activeList::-webkit-scrollbar {
+        display: none; /* Chrome/Safari */
+      }
+
+      .user-status {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        position: relative;
+        min-width: 60px;
+        cursor: default;
+      }
+
+      .avatar-circle {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        /* Instagram Gradient Ring */
+        background: linear-gradient(
+          45deg,
+          #f09433 0%,
+          #e6683c 25%,
+          #dc2743 50%,
+          #cc2366 75%,
+          #bc1888 100%
+        );
+        padding: 2px;
+        margin-bottom: 4px;
+      }
+
+      .avatar-inner {
+        width: 100%;
+        height: 100%;
+        background: white;
+        border-radius: 50%;
         display: flex;
         align-items: center;
-        gap: 15px;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 18px;
+        color: var(--text-main);
+        text-transform: uppercase;
       }
 
-      .back-btn {
-        text-decoration: none;
-        color: var(--primary-color);
-        font-weight: bold;
+      .status-dot {
+        height: 13px;
+        width: 13px;
+        background-color: #1ed760; /* Active Green */
+        border: 2px solid white;
+        border-radius: 50%;
+        position: absolute;
+        bottom: 22px;
+        right: 8px;
       }
 
-      header h2 {
-        margin: 0;
-        font-size: 1.1rem;
-        color: #333;
+      .username-label {
+        font-size: 11px;
+        color: var(--text-main);
+        max-width: 60px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
-      /* Messages Area */
+      /* --- Messages Area --- */
       #messages {
         flex: 1;
         overflow-y: auto;
-        padding: 20px;
+        padding: 15px;
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 8px;
       }
 
       .message {
-        max-width: 80%;
-        padding: 10px 15px;
-        border-radius: 18px;
-        position: relative;
+        padding: 10px 16px;
+        border-radius: 22px;
+        max-width: 70%;
+        font-size: 14px;
         line-height: 1.4;
+        word-wrap: break-word;
+        position: relative;
       }
 
-      .sender-tag {
-        display: block;
-        font-size: 0.7rem;
-        margin-bottom: 4px;
-        font-weight: bold;
-        opacity: 0.7;
-      }
-
-      /* Sent vs Received Styles */
       .sent {
         align-self: flex-end;
-        background-color: var(--sent-msg);
+        background-color: var(--msg-sent);
         color: white;
         border-bottom-right-radius: 4px;
       }
 
       .received {
         align-self: flex-start;
-        background-color: var(--received-msg);
-        color: #333;
+        background-color: var(--msg-received);
+        color: var(--text-main);
         border-bottom-left-radius: 4px;
       }
 
-      /* Input Bar */
+      .sender-tag {
+        font-size: 10px;
+        font-weight: 600;
+        margin-bottom: 2px;
+        opacity: 0.5;
+        display: block;
+        margin-left: 10px; /* Indent slightly for received messages */
+      }
+
+      /* --- Input Bar --- */
       .input-area {
         padding: 15px;
-        border-top: 1px solid #eee;
+        border-top: 1px solid var(--insta-gray);
         display: flex;
+        align-items: center;
         gap: 10px;
         background: white;
       }
 
-      #messageInput {
+      #msgInput {
         flex: 1;
-        padding: 12px 18px;
-        border: 1px solid #ddd;
+        padding: 12px 20px;
+        border: 1px solid var(--insta-gray);
         border-radius: 25px;
         outline: none;
-        font-size: 16px; /* Prevents auto-zoom on iPhone */
+        font-size: 15px;
+        background: #efefef;
       }
 
-      #messageInput:focus {
-        border-color: var(--primary-color);
+      #msgInput:focus {
+        background: white;
+        border-color: #ccc;
       }
 
       #sendBtn {
-        background: var(--primary-color);
-        color: white;
+        color: var(--insta-blue);
+        background: none;
         border: none;
-        padding: 0 20px;
-        border-radius: 25px;
-        font-weight: bold;
+        font-weight: 600;
+        font-size: 15px;
         cursor: pointer;
-        transition: opacity 0.2s;
+        padding: 5px 10px;
       }
 
       #sendBtn:hover {
-        opacity: 0.8;
+        opacity: 0.7;
       }
     </style>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   </head>
   <body>
     <div class="chat-wrapper">
       <header>
-        <a href="../index.html" class="back-btn">⬅ Back</a>
-        <h2>Direct to My Valentine 💖</h2>
+        <div class="header-main"><h3>Direct 💖</h3></div>
+        <div id="activeList"></div>
       </header>
 
-      <div id="messages"></div>
+      <div id="messages">
+        <div
+          style="
+            text-align: center;
+            padding: 20px;
+            color: #ccc;
+            font-size: 12px;
+          "
+        >
+          Loading chat...
+        </div>
+      </div>
 
       <div class="input-area">
-        <input type="text" id="messageInput" placeholder="Write a secret..." />
+        <input
+          type="text"
+          id="msgInput"
+          placeholder="Message..."
+          autocomplete="off"
+        />
         <button id="sendBtn">Send</button>
       </div>
     </div>
-    <!-- "https://xyvyocpdekeewoyvomuv.supabase.co" -->
-    <!-- "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5dnlvY3BkZWtlZXdveXZvbXV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxNjc0NTEsImV4cCI6MjA4NTc0MzQ1MX0.8VkWO7vxdm4GrMp2FCeF4Ds7sxUVWo1AxOrxbeu4f4Y" -->
-    <script>
-      console.log("🚀 Script execution started...");
 
-      // 1. CONFIG
+    <script>
+      // --- 1. CONFIGURATION ---
+      // Your actual credentials are inserted here:
       const SUPABASE_URL = "https://xyvyocpdekeewoyvomuv.supabase.co";
       const SUPABASE_KEY =
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5dnlvY3BkZWtlZXdveXZvbXV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxNjc0NTEsImV4cCI6MjA4NTc0MzQ1MX0.8VkWO7vxdm4GrMp2FCeF4Ds7sxUVWo1AxOrxbeu4f4Y";
 
-      console.log("🔗 Connecting to URL:", SUPABASE_URL);
-
-      // Check if the library is even loaded
-      if (typeof supabase === "undefined") {
-        console.error(
-          "❌ ERROR: Supabase library is not loaded! Check your <script src='...'> tag."
-        );
-      } else {
-        console.log("✅ Supabase library detected.");
-      }
-
       const { createClient } = supabase;
       const _supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-      const msgInput = document.getElementById("messageInput");
-      const sendBtn = document.getElementById("sendBtn");
-      const msgDiv = document.getElementById("messages");
-      let myName = localStorage.getItem('chat-user');
-      if (!myName) {
-          myName = prompt("Identify yourself (e.g., Romeo or Juliet):") || "User";
-          localStorage.setItem('chat-user', myName);
-      }
+      // --- 2. MAIN LOGIC (Wraps everything to ensure HTML loads first) ---
+      window.addEventListener("DOMContentLoaded", () => {
+        console.log("Chat initialized.");
 
-      console.log("👤 Current User Name:", myName);
+        // Identity Check
+        let myName = localStorage.getItem("chat-user");
+        if (!myName) {
+          myName = prompt("Enter your name for the chat:") || "Guest";
+          localStorage.setItem("chat-user", myName);
+        }
 
-      // 2. RENDER
-      function renderMessage(data) {
-        console.log("📥 Rendering message from:", data.sender);
-        const div = document.createElement("div");
-        div.className = `message ${
-          data.sender === myName ? "sent" : "received"
-        }`;
-        div.innerHTML = `<span class="sender-tag">${data.sender}</span><div>${data.content}</div>`;
-        msgDiv.appendChild(div);
-        msgDiv.scrollTop = msgDiv.scrollHeight;
-      }
+        // Get HTML Elements
+        const msgInput = document.getElementById("msgInput");
+        const sendBtn = document.getElementById("sendBtn");
+        const msgDiv = document.getElementById("messages");
+        const activeListDiv = document.getElementById("activeList");
 
-      // 3. FETCH HISTORY
-      async function fetchHistory() {
-        console.log("⏳ Fetching history from Supabase...");
-        try {
+        // Helper: Render a single message
+        function renderMessage(data) {
+          const isMe = data.sender === myName;
+          const div = document.createElement("div");
+          div.className = `message ${isMe ? "sent" : "received"}`;
+
+          // Only show name label if it's NOT me
+          let nameLabel = "";
+          if (!isMe) {
+            nameLabel = `<span class="sender-tag">${data.sender}</span>`;
+          }
+
+          div.innerHTML = `
+                    ${nameLabel}
+                    <div>${data.content}</div>
+                `;
+
+          msgDiv.appendChild(div);
+          msgDiv.scrollTop = msgDiv.scrollHeight; // Auto-scroll to bottom
+        }
+
+        // --- 3. FETCH HISTORY ---
+        async function fetchHistory() {
           const { data, error } = await _supabase
             .from("messages")
             .select("*")
-            .order("created_at");
+            .order("created_at", { ascending: true });
 
           if (error) {
-            console.error("❌ SUPABASE FETCH ERROR:", error.message);
-            msgDiv.innerHTML = `<div style="color:red">Error: ${error.message}</div>`;
+            console.error("Error loading messages:", error);
+            msgDiv.innerHTML =
+              '<div style="text-align:center; color:red;">Connection failed.</div>';
           } else {
-            console.log("📦 Data received. Row count:", data ? data.length : 0);
-            msgDiv.innerHTML = "";
-            if (data && data.length > 0) {
-              data.forEach(renderMessage);
-            } else {
-              console.log("ℹ️ Table is empty.");
+            msgDiv.innerHTML = ""; // Clear loading text
+            if (data.length === 0) {
               msgDiv.innerHTML =
-                '<div style="text-align:center; padding:20px; color:#999;">Table is empty. Send a message!</div>';
+                '<div style="text-align:center; color:#ccc; margin-top:20px;">No messages yet. Say hi! 👋</div>';
             }
+            data.forEach(renderMessage);
           }
-        } catch (err) {
-          console.error("❌ CRITICAL SCRIPT ERROR during fetch:", err);
-        }
-      }
-
-      // 4. SEND MESSAGE
-      async function sendMessage() {
-        const content = msgInput.value.trim();
-        if (!content) {
-          console.log("⚠️ Cannot send empty message.");
-          return;
         }
 
-        console.log("📤 Sending message:", content);
-        msgInput.value = "";
+        // --- 4. SEND FUNCTION ---
+        async function sendMessage() {
+          const content = msgInput.value.trim();
+          if (!content) return;
 
-        try {
+          msgInput.value = ""; // Clear input immediately
+
           const { error } = await _supabase
             .from("messages")
             .insert([{ content: content, sender: myName }]);
 
-          if (error) {
-            console.error("❌ SUPABASE INSERT ERROR:", error.message);
-          } else {
-            console.log("✅ Message sent successfully!");
-          }
-        } catch (err) {
-          console.error("❌ CRITICAL SCRIPT ERROR during send:", err);
+          if (error) alert("Failed to send message!");
         }
-      }
 
-      // 5. LISTENERS
-      if (sendBtn) {
+        // --- 5. PRESENCE (Active Users List) ---
+        const presenceChannel = _supabase.channel("online-users", {
+          config: { presence: { key: myName } },
+        });
+
+        presenceChannel
+          .on("presence", { event: "sync" }, () => {
+            const state = presenceChannel.presenceState();
+            const users = Object.keys(state);
+
+            activeListDiv.innerHTML = users
+              .map((name) => {
+                const isMe = name === myName;
+                const label = isMe ? "You" : name;
+                const initial = name.charAt(0).toUpperCase();
+
+                return `
+                            <div class="user-status">
+                                <div class="avatar-circle">
+                                    <div class="avatar-inner">${initial}</div>
+                                </div>
+                                <span class="status-dot"></span>
+                                <span class="username-label">${label}</span>
+                            </div>
+                        `;
+              })
+              .join("");
+          })
+          .subscribe(async (status) => {
+            if (status === "SUBSCRIBED") {
+              await presenceChannel.track({
+                online_at: new Date().toISOString(),
+              });
+            }
+          });
+
+        // --- 6. REAL-TIME MESSAGES ---
+        _supabase
+          .channel("chat-room")
+          .on(
+            "postgres_changes",
+            { event: "INSERT", schema: "public", table: "messages" },
+            (payload) => {
+              renderMessage(payload.new);
+            }
+          )
+          .subscribe();
+
+        // --- 7. EVENT LISTENERS ---
         sendBtn.onclick = sendMessage;
-        console.log("✅ Send button listener attached.");
-      } else {
-        console.error("❌ ERROR: Send button not found in HTML!");
-      }
 
-      msgInput.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-          console.log("⌨️ Enter key detected.");
-          sendMessage();
-        }
-      });
-
-      // Real-time
-      _supabase
-        .channel("room1")
-        .on(
-          "postgres_changes",
-          {
-            event: "INSERT",
-            schema: "public",
-            table: "messages",
-          },
-          (payload) => {
-            console.log("🔔 Real-time update received!");
-            renderMessage(payload.new);
+        // Allow "Enter" key to send
+        msgInput.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            sendMessage();
           }
-        )
-        .subscribe();
+        });
 
-      // Start
-      fetchHistory();
+        // Start everything
+        fetchHistory();
+      });
     </script>
   </body>
 </html>
