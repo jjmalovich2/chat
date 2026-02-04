@@ -175,7 +175,11 @@
       const msgInput = document.getElementById("messageInput");
       const sendBtn = document.getElementById("sendBtn");
       const msgDiv = document.getElementById("messages");
-      let myName = localStorage.getItem("chat-user") || "User";
+      let myName = localStorage.getItem('chat-user');
+      if (!myName) {
+          myName = prompt("Identify yourself (e.g., Romeo or Juliet):") || "User";
+          localStorage.setItem('chat-user', myName);
+      }
 
       console.log("👤 Current User Name:", myName);
 
