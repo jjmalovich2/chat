@@ -11,14 +11,15 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
-      /* --- UPDATED COLORS FOR DARK MODE --- */
+      /* --- DARK MODE CONFIG --- */
       :root {
-        --insta-bg: #000000; /* Changed from white to black */
-        --insta-gray: #363636; /* Darker border color */
+        --insta-bg: #000000;
+        --insta-gray: #262626; /* Slightly lighter for borders */
         --insta-blue: #0095f6;
-        --msg-received: #262626; /* Dark gray bubble for received msgs */
+        --msg-received: #262626;
         --msg-sent: #3797f0;
-        --text-main: #f5f5f5; /* White text */
+        --text-main: #f5f5f5;
+        --reply-bg: rgba(255, 255, 255, 0.1);
       }
 
       body {
@@ -40,28 +41,26 @@
         flex-direction: column;
         border-left: 1px solid var(--insta-gray);
         border-right: 1px solid var(--insta-gray);
-        box-shadow: 0 0 20px rgba(0, 0, 0, 0.5); /* Darker shadow */
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        position: relative;
       }
 
-      /* --- Instagram Header & Active List --- */
+      /* --- Header --- */
       header {
-        background: var(--insta-bg); /* Use variable instead of 'white' */
+        background: var(--insta-bg);
         border-bottom: 1px solid var(--insta-gray);
         padding: 10px 0;
-        position: sticky;
-        top: 0;
         z-index: 10;
       }
-
       .header-main h3 {
         margin: 0;
         font-size: 16px;
         font-weight: 600;
         text-align: center;
         padding-bottom: 10px;
-        color: var(--text-main);
       }
 
+      /* --- Active List --- */
       #activeList {
         display: flex;
         gap: 15px;
@@ -79,13 +78,13 @@
         align-items: center;
         position: relative;
         min-width: 60px;
-        cursor: default;
       }
-
       .avatar-circle {
         width: 48px;
         height: 48px;
         border-radius: 50%;
+        padding: 2px;
+        margin-bottom: 4px;
         background: linear-gradient(
           45deg,
           #f09433 0%,
@@ -94,38 +93,30 @@
           #cc2366 75%,
           #bc1888 100%
         );
-        padding: 2px;
-        margin-bottom: 4px;
       }
-
       .avatar-inner {
         width: 100%;
         height: 100%;
-        background: var(--insta-bg); /* Changed from white to black */
+        background: var(--insta-bg);
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
         font-weight: 600;
         font-size: 18px;
-        color: var(--text-main);
-        text-transform: uppercase;
       }
-
       .status-dot {
         height: 13px;
         width: 13px;
         background-color: #1ed760;
-        border: 2px solid var(--insta-bg); /* Border matches bg */
+        border: 2px solid var(--insta-bg);
         border-radius: 50%;
         position: absolute;
         bottom: 22px;
         right: 8px;
       }
-
       .username-label {
         font-size: 11px;
-        color: var(--text-main);
         max-width: 60px;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -150,6 +141,12 @@
         line-height: 1.4;
         word-wrap: break-word;
         position: relative;
+        cursor: pointer; /* Indicates clickable */
+        transition: transform 0.1s;
+      }
+
+      .message:active {
+        transform: scale(0.98);
       }
 
       .sent {
@@ -158,11 +155,9 @@
         color: white;
         border-bottom-right-radius: 4px;
       }
-
       .received {
         align-self: flex-start;
         background-color: var(--msg-received);
-        color: var(--text-main);
         border-bottom-left-radius: 4px;
       }
 
@@ -171,9 +166,70 @@
         font-weight: 600;
         margin-bottom: 2px;
         opacity: 0.7;
-        color: #aaa; /* Lighter text for names */
-        display: block;
+        color: #aaa;
         margin-left: 10px;
+      }
+
+      /* --- Reply Styling --- */
+      /* The block inside the bubble */
+      .reply-quote-block {
+        background-color: rgba(0, 0, 0, 0.2);
+        border-left: 3px solid rgba(255, 255, 255, 0.5);
+        padding: 8px 10px;
+        border-radius: 8px;
+        margin-bottom: 6px;
+        font-size: 12px;
+        display: flex;
+        flex-direction: column;
+        opacity: 0.9;
+      }
+      .reply-sender {
+        font-weight: 700;
+        margin-bottom: 2px;
+        opacity: 0.8;
+      }
+      .reply-text {
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        opacity: 0.8;
+      }
+
+      /* The Preview Bar above input */
+      #replyPreviewBar {
+        background-color: #1e1e1e;
+        padding: 10px 15px;
+        border-top: 1px solid var(--insta-gray);
+        display: none; /* Hidden by default */
+        justify-content: space-between;
+        align-items: center;
+        font-size: 13px;
+        color: #ddd;
+      }
+      .reply-info {
+        display: flex;
+        flex-direction: column;
+        width: 90%;
+      }
+      .replying-to-label {
+        font-weight: 600;
+        color: var(--insta-blue);
+        margin-bottom: 2px;
+      }
+      .reply-preview-text {
+        color: #aaa;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      #cancelReplyBtn {
+        background: none;
+        border: none;
+        color: #888;
+        font-size: 20px;
+        cursor: pointer;
+        padding: 0 5px;
       }
 
       /* --- Input Bar --- */
@@ -183,7 +239,7 @@
         display: flex;
         align-items: center;
         gap: 10px;
-        background: var(--insta-bg); /* Changed from white */
+        background: var(--insta-bg);
       }
 
       #msgInput {
@@ -193,15 +249,12 @@
         border-radius: 25px;
         outline: none;
         font-size: 15px;
-        background: #262626; /* Dark gray input */
-        color: white; /* White typing text */
-      }
-
-      #msgInput:focus {
         background: #262626;
+        color: white;
+      }
+      #msgInput:focus {
         border-color: #555;
       }
-
       #sendBtn {
         color: var(--insta-blue);
         background: none;
@@ -209,11 +262,6 @@
         font-weight: 600;
         font-size: 15px;
         cursor: pointer;
-        padding: 5px 10px;
-      }
-
-      #sendBtn:hover {
-        color: white; /* Hover effect for dark mode */
       }
     </style>
   </head>
@@ -229,12 +277,22 @@
           style="
             text-align: center;
             padding: 20px;
-            color: #666; /* Darker loading text */
+            color: #666;
             font-size: 12px;
           "
         >
           Loading chat...
         </div>
+      </div>
+
+      <div id="replyPreviewBar">
+        <div class="reply-info">
+          <span class="replying-to-label">Replying to...</span>
+          <span class="reply-preview-text" id="replyPreviewText"
+            >Message content...</span
+          >
+        </div>
+        <button id="cancelReplyBtn">&times;</button>
       </div>
 
       <div class="input-area">
@@ -257,11 +315,10 @@
       const { createClient } = supabase;
       const _supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-      // --- 2. MAIN LOGIC ---
-      window.addEventListener("DOMContentLoaded", () => {
-        console.log("Chat initialized.");
+      // GLOBAL STATE FOR REPLIES
+      let currentReplyData = null; // Stores { text, sender }
 
-        // Identity Check
+      window.addEventListener("DOMContentLoaded", () => {
         let myName = localStorage.getItem("chat-user");
         if (!myName) {
           myName = prompt("Enter your name for the chat:") || "Guest";
@@ -272,117 +329,149 @@
         const sendBtn = document.getElementById("sendBtn");
         const msgDiv = document.getElementById("messages");
         const activeListDiv = document.getElementById("activeList");
+        const replyPreviewBar = document.getElementById("replyPreviewBar");
+        const replyPreviewText = document.getElementById("replyPreviewText");
+        const cancelReplyBtn = document.getElementById("cancelReplyBtn");
 
-        // Helper: Render a single message
+        // --- RENDER MESSAGE ---
         function renderMessage(data) {
           const isMe = data.sender === myName;
           const div = document.createElement("div");
           div.className = `message ${isMe ? "sent" : "received"}`;
 
+          // Add Double Click Event to Reply
+          div.ondblclick = () => initiateReply(data.content, data.sender);
+
+          // 1. Check if there is a reply
+          let replyBlock = "";
+          if (data.reply_to) {
+            const rSender =
+              data.reply_to.sender === myName ? "You" : data.reply_to.sender;
+            replyBlock = `
+                <div class="reply-quote-block">
+                    <span class="reply-sender">${rSender}</span>
+                    <span class="reply-text">${data.reply_to.text}</span>
+                </div>
+             `;
+          }
+
+          // 2. Sender Tag (only if received)
           let nameLabel = "";
           if (!isMe) {
             nameLabel = `<span class="sender-tag">${data.sender}</span>`;
           }
 
           div.innerHTML = `
-                    ${nameLabel}
-                    <div>${data.content}</div>
-                `;
+             ${nameLabel}
+             ${replyBlock} 
+             <div>${data.content}</div>
+          `;
 
           msgDiv.appendChild(div);
           msgDiv.scrollTop = msgDiv.scrollHeight;
         }
 
-        // --- 3. FETCH HISTORY ---
+        // --- REPLY LOGIC ---
+        function initiateReply(text, sender) {
+          currentReplyData = { text: text, sender: sender };
+
+          // Show the preview bar
+          const displaySender = sender === myName ? "yourself" : sender;
+          document.querySelector(
+            ".replying-to-label"
+          ).innerText = `Replying to ${displaySender}`;
+          replyPreviewText.innerText = text;
+          replyPreviewBar.style.display = "flex";
+
+          msgInput.focus();
+        }
+
+        function clearReply() {
+          currentReplyData = null;
+          replyPreviewBar.style.display = "none";
+        }
+
+        cancelReplyBtn.onclick = clearReply;
+
+        // --- HISTORY ---
         async function fetchHistory() {
           const { data, error } = await _supabase
             .from("messages")
             .select("*")
             .order("created_at", { ascending: true });
 
-          if (error) {
-            console.error("Error loading messages:", error);
-            msgDiv.innerHTML =
-              '<div style="text-align:center; color:red;">Connection failed.</div>';
-          } else {
+          if (!error) {
             msgDiv.innerHTML = "";
-            if (data.length === 0) {
+            if (data.length === 0)
               msgDiv.innerHTML =
-                '<div style="text-align:center; color:#666; margin-top:20px;">No messages yet. Say hi! 👋</div>';
-            }
+                '<div style="text-align:center; color:#666; margin-top:20px;">No messages yet.</div>';
             data.forEach(renderMessage);
           }
         }
 
-        // --- 4. SEND FUNCTION ---
+        // --- SEND ---
         async function sendMessage() {
           const content = msgInput.value.trim();
           if (!content) return;
 
           msgInput.value = "";
 
-          const { error } = await _supabase
-            .from("messages")
-            .insert([{ content: content, sender: myName }]);
+          // Prepare payload
+          const payload = {
+            content: content,
+            sender: myName,
+            reply_to: currentReplyData, // Add reply data if exists
+          };
 
-          if (error) alert("Failed to send message!");
+          // Clear reply state immediately after sending
+          clearReply();
+
+          const { error } = await _supabase.from("messages").insert([payload]);
+
+          if (error) {
+            console.error(error);
+            alert(
+              "Failed to send message! Did you add the 'reply_to' column in Supabase?"
+            );
+          }
         }
 
-        // --- 5. PRESENCE ---
+        // --- PRESENCE & REALTIME ---
         const presenceChannel = _supabase.channel("online-users", {
           config: { presence: { key: myName } },
         });
-
         presenceChannel
           .on("presence", { event: "sync" }, () => {
             const state = presenceChannel.presenceState();
             const users = Object.keys(state);
-
             activeListDiv.innerHTML = users
               .map((name) => {
-                const isMe = name === myName;
-                const label = isMe ? "You" : name;
                 const initial = name.charAt(0).toUpperCase();
-
-                return `
-                            <div class="user-status">
-                                <div class="avatar-circle">
-                                    <div class="avatar-inner">${initial}</div>
-                                </div>
-                                <span class="status-dot"></span>
-                                <span class="username-label">${label}</span>
-                            </div>
-                        `;
+                return `<div class="user-status"><div class="avatar-circle"><div class="avatar-inner">${initial}</div></div><span class="status-dot"></span><span class="username-label">${
+                  name === myName ? "You" : name
+                }</span></div>`;
               })
               .join("");
           })
           .subscribe(async (status) => {
-            if (status === "SUBSCRIBED") {
+            if (status === "SUBSCRIBED")
               await presenceChannel.track({
                 online_at: new Date().toISOString(),
               });
-            }
           });
 
-        // --- 6. REAL-TIME MESSAGES ---
         _supabase
           .channel("chat-room")
           .on(
             "postgres_changes",
             { event: "INSERT", schema: "public", table: "messages" },
-            (payload) => {
-              renderMessage(payload.new);
-            }
+            (payload) => renderMessage(payload.new)
           )
           .subscribe();
 
-        // --- 7. EVENT LISTENERS ---
         sendBtn.onclick = sendMessage;
-
         msgInput.addEventListener("keydown", (e) => {
-          if (e.key === "Enter") {
-            sendMessage();
-          }
+          if (e.key === "Enter") sendMessage();
         });
 
         fetchHistory();
