@@ -159,7 +159,7 @@
         word-wrap: break-word;
         position: relative;
         cursor: grab;
-        user-select: none; /* Prevents text highlight on double click/drag */
+        user-select: none;
         touch-action: pan-y;
         transform: translateX(0);
         will-change: transform;
@@ -226,7 +226,9 @@
         right: -8px;
       }
 
-      /* Big Pop Animation */
+      /* --- ANIMATIONS --- */
+
+      /* Normal Like (Pop Up) */
       .big-heart-pop {
         position: absolute;
         top: 50%;
@@ -253,6 +255,62 @@
       }
       .animate-pop {
         animation: popHeart 0.8s ease-out forwards;
+      }
+
+      /* --- HEART BREAK SVG ANIMATION --- */
+      .break-container {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 80px;
+        height: 80px;
+        pointer-events: none;
+        z-index: 10;
+      }
+
+      .heart-path {
+        fill: #ff3b30; /* Nice Red Color */
+        stroke: none;
+        transform-origin: center;
+      }
+
+      /* Animate the Left Half */
+      .left-half {
+        animation: crackLeftSVG 0.9s forwards cubic-bezier(0.1, 0.7, 1, 0.1);
+      }
+
+      /* Animate the Right Half */
+      .right-half {
+        animation: crackRightSVG 0.9s forwards cubic-bezier(0.1, 0.7, 1, 0.1);
+      }
+
+      @keyframes crackLeftSVG {
+        0% {
+          transform: translate(0, 0) rotate(0deg);
+          opacity: 1;
+        }
+        20% {
+          transform: translate(-4px, -4px) rotate(-5deg);
+        } /* Initial break */
+        100% {
+          transform: translate(-30px, 60px) rotate(-45deg);
+          opacity: 0;
+        } /* Fall */
+      }
+
+      @keyframes crackRightSVG {
+        0% {
+          transform: translate(0, 0) rotate(0deg);
+          opacity: 1;
+        }
+        20% {
+          transform: translate(4px, -4px) rotate(5deg);
+        } /* Initial break */
+        100% {
+          transform: translate(30px, 60px) rotate(45deg);
+          opacity: 0;
+        } /* Fall */
       }
 
       /* --- Reply Styling --- */
@@ -608,10 +666,9 @@
           let rowDiv = document.getElementById(`msg-${msgId}`);
           let div;
 
-          // If message exists, just update data
           if (rowDiv) {
             div = rowDiv.querySelector(".message");
-            div.savedLikes = data.liked_by || []; // Update local store
+            div.savedLikes = data.liked_by || [];
             updateLikeVisuals(div, div.savedLikes);
             return;
           }
@@ -645,20 +702,48 @@
           div = document.createElement("div");
           div.className = "message";
 
-          // Save likes to element for toggle logic
           div.savedLikes = data.liked_by || [];
 
           // --- DOUBLE CLICK / TAP LIKE LOGIC ---
           let lastTap = 0;
           const handleLikeToggle = () => {
+            const isUnliking = div.savedLikes.includes(myName);
             toggleLike(msgId, div.savedLikes);
 
-            // Pop Animation
-            const pop = document.createElement("div");
-            pop.className = "big-heart-pop animate-pop";
-            pop.innerText = "❤️";
-            div.appendChild(pop);
-            setTimeout(() => pop.remove(), 1000);
+            if (isUnliking) {
+              // --- BROKEN HEART SVG ANIMATION ---
+              const container = document.createElement("div");
+              container.className = "break-container";
+
+              // We use SVG to draw interlocking halves
+              container.innerHTML = `
+                   <svg viewBox="0 0 24 24" width="80" height="80">
+                      <path class="heart-path left-half" 
+                            d="M12 21.35 
+                               l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 
+                               C2 5.42 4.42 3 7.5 3 
+                               c1.74 0 3.41.81 4.5 2.09 
+                               L 12 5 L 11 9 L 13 13 L 11 17 L 12 21.35 Z" />
+                      
+                      <path class="heart-path right-half" 
+                            d="M12 21.35 
+                               L 11 17 L 13 13 L 11 9 L 12 5
+                               C 13.09 3.81 14.76 3 16.5 3 
+                               C 19.58 3 22 5.42 22 8.5 
+                               c 0 3.78 -3.4 6.86 -8.55 11.54 L 12 21.35 Z" />
+                   </svg>
+                 `;
+
+              div.appendChild(container);
+              setTimeout(() => container.remove(), 1000);
+            } else {
+              // --- NORMAL HEART POP ---
+              const pop = document.createElement("div");
+              pop.className = "big-heart-pop animate-pop";
+              pop.innerText = "❤️";
+              div.appendChild(pop);
+              setTimeout(() => pop.remove(), 1000);
+            }
           };
 
           div.addEventListener("dblclick", (e) => {
@@ -712,7 +797,6 @@
             currentTranslate = 0;
           };
 
-          // Touch
           div.addEventListener(
             "touchstart",
             (e) => startDrag(e.touches[0].clientX),
@@ -725,7 +809,6 @@
           );
           div.addEventListener("touchend", endDrag);
 
-          // Mouse
           div.addEventListener("mousedown", (e) => startDrag(e.clientX));
           div.addEventListener("mousemove", (e) => moveDrag(e.clientX, e));
           div.addEventListener("mouseup", endDrag);
@@ -779,8 +862,7 @@
           } else {
             newLikedBy = [...currentLikedBy, myName];
           }
-
-          const { error } = await _supabase
+          await _supabase
             .from("messages")
             .update({ liked_by: newLikedBy })
             .eq("id", msgId);
@@ -976,7 +1058,6 @@
             "postgres_changes",
             { event: "UPDATE", schema: "public", table: "messages" },
             (payload) => {
-              // Update likes in realtime
               renderMessage(payload.new);
             }
           )
