@@ -237,6 +237,8 @@
         display: inline-block;
         animation: shakeScream 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
         transform-origin: center;
+        /* Smoothly transition back to normal if desired, or instant snap */
+        transition: font-size 0.2s ease, font-weight 0.2s ease;
       }
 
       .sender-tag {
@@ -882,12 +884,18 @@
           } else {
             // --- SCREAM DETECTION ---
             const text = data.content || "";
-            // Must contain at least one letter, and must match its uppercase version
             const isScreaming =
               /[a-zA-Z]/.test(text) && text === text.toUpperCase();
 
             const finalClass = isScreaming ? "scream" : "";
-            contentHtml = `<div class="${finalClass}">${linkify(text)}</div>`;
+            // ADDED: onanimationend event to remove the class automatically
+            const animationAttr = isScreaming
+              ? `onanimationend="this.classList.remove('scream')"`
+              : "";
+
+            contentHtml = `<div class="${finalClass}" ${animationAttr}>${linkify(
+              text
+            )}</div>`;
           }
 
           let nameLabel = !isMe
