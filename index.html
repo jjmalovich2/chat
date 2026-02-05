@@ -25,7 +25,8 @@
       body {
         background-color: var(--insta-bg);
         color: var(--text-main);
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
         margin: 0;
         display: flex;
         flex-direction: column;
@@ -33,65 +34,356 @@
         overflow: hidden;
       }
 
-      .chat-wrapper { width: 100%; height: 100%; display: flex; flex-direction: column; background: var(--insta-bg); }
+      .chat-wrapper {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        background: var(--insta-bg);
+      }
 
       /* --- Header --- */
-      header { background: var(--insta-bg); border-bottom: 1px solid var(--insta-gray); padding: 10px 20px; z-index: 10; }
-      .header-main h3 { margin: 0; font-size: 16px; font-weight: 600; text-align: center; padding-bottom: 10px; }
+      header {
+        background: var(--insta-bg);
+        border-bottom: 1px solid var(--insta-gray);
+        padding: 10px 20px;
+        z-index: 10;
+      }
+      .header-main h3 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 600;
+        text-align: center;
+        padding-bottom: 10px;
+      }
 
       /* --- Active List --- */
-      #activeList { display: flex; gap: 15px; padding: 5px 0; overflow-x: auto; scrollbar-width: none; }
-      #activeList::-webkit-scrollbar { display: none; }
-      .user-status { display: flex; flex-direction: column; align-items: center; position: relative; min-width: 60px; }
-      .avatar-circle { width: 48px; height: 48px; border-radius: 50%; padding: 2px; margin-bottom: 4px; background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); }
-      .avatar-inner { width: 100%; height: 100%; background: var(--insta-bg); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 18px; }
-      .status-dot { height: 13px; width: 13px; background-color: #1ed760; border: 2px solid var(--insta-bg); border-radius: 50%; position: absolute; bottom: 22px; right: 8px; }
-      .username-label { font-size: 11px; max-width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      #activeList {
+        display: flex;
+        gap: 15px;
+        padding: 5px 0;
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+      #activeList::-webkit-scrollbar {
+        display: none;
+      }
+      .user-status {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        position: relative;
+        min-width: 60px;
+      }
+      .avatar-circle {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        padding: 2px;
+        margin-bottom: 4px;
+        background: linear-gradient(
+          45deg,
+          #f09433 0%,
+          #e6683c 25%,
+          #dc2743 50%,
+          #cc2366 75%,
+          #bc1888 100%
+        );
+      }
+      .avatar-inner {
+        width: 100%;
+        height: 100%;
+        background: var(--insta-bg);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 18px;
+      }
+      .status-dot {
+        height: 13px;
+        width: 13px;
+        background-color: #1ed760;
+        border: 2px solid var(--insta-bg);
+        border-radius: 50%;
+        position: absolute;
+        bottom: 22px;
+        right: 8px;
+      }
+      .username-label {
+        font-size: 11px;
+        max-width: 60px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
 
       /* --- Messages Area --- */
-      #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 8px; }
-      .time-separator { text-align: center; color: var(--time-text); font-size: 12px; font-weight: 500; margin: 20px 0 10px 0; }
-      .message { padding: 12px 18px; border-radius: 22px; max-width: 60%; font-size: 15px; line-height: 1.5; word-wrap: break-word; position: relative; cursor: pointer; }
-      @media (max-width: 768px) { .message { max-width: 80%; } }
-      .sent { align-self: flex-end; background-color: var(--msg-sent); color: white; border-bottom-right-radius: 4px; }
-      .received { align-self: flex-start; background-color: var(--msg-received); border-bottom-left-radius: 4px; }
-      .sender-tag { font-size: 11px; font-weight: 600; margin-bottom: 4px; opacity: 0.7; color: #aaa; margin-left: 10px; }
-      .chat-image { max-width: 100%; max-height: 400px; object-fit: contain; border-radius: 12px; margin-top: 5px; display: block; }
+      #messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        overflow-x: hidden;
+      }
+      .time-separator {
+        text-align: center;
+        color: var(--time-text);
+        font-size: 12px;
+        font-weight: 500;
+        margin: 20px 0 10px 0;
+      }
+
+      .message-row {
+        display: flex;
+        width: 100%;
+        position: relative;
+      }
+      .message-row.sent {
+        justify-content: flex-end;
+      }
+      .message-row.received {
+        justify-content: flex-start;
+      }
+
+      .message {
+        padding: 12px 18px;
+        border-radius: 22px;
+        max-width: 65%;
+        font-size: 15px;
+        line-height: 1.5;
+        word-wrap: break-word;
+        position: relative;
+        cursor: pointer;
+        /* Important for swipe animation */
+        touch-action: pan-y;
+        transform: translateX(0);
+        will-change: transform;
+        display: flex;
+        flex-direction: column;
+        z-index: 2;
+      }
+
+      .sent .message {
+        background-color: var(--msg-sent);
+        color: white;
+        border-bottom-right-radius: 4px;
+      }
+      .received .message {
+        background-color: var(--msg-received);
+        border-bottom-left-radius: 4px;
+      }
+
+      .sender-tag {
+        font-size: 11px;
+        font-weight: 600;
+        margin-bottom: 4px;
+        opacity: 0.7;
+        color: #aaa;
+        margin-left: 10px;
+      }
+      .chat-image {
+        max-width: 100%;
+        max-height: 400px;
+        object-fit: contain;
+        border-radius: 12px;
+        margin-top: 5px;
+        display: block;
+      }
 
       /* --- Reply Styling --- */
-      .reply-quote-block { background-color: rgba(0,0,0,0.2); border-left: 3px solid rgba(255,255,255,0.5); padding: 8px 10px; border-radius: 8px; margin-bottom: 6px; font-size: 13px; display: flex; flex-direction: column; }
-      .reply-sender { font-weight: 700; margin-bottom: 2px; opacity: 0.8; }
-      .reply-text { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; opacity: 0.8; }
-      #replyPreviewBar { background-color: #1e1e1e; padding: 10px 20px; border-top: 1px solid var(--insta-gray); display: none; justify-content: space-between; align-items: center; font-size: 14px; color: #ddd; }
-      .replying-to-label { font-weight: 600; color: var(--insta-blue); display: block; margin-bottom: 2px; }
-      
+      .reply-quote-block {
+        background-color: rgba(0, 0, 0, 0.2);
+        border-left: 3px solid rgba(255, 255, 255, 0.5);
+        padding: 8px 10px;
+        border-radius: 8px;
+        margin-bottom: 6px;
+        font-size: 13px;
+        display: flex;
+        flex-direction: column;
+      }
+      .reply-sender {
+        font-weight: 700;
+        margin-bottom: 2px;
+        opacity: 0.8;
+      }
+      .reply-text {
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        opacity: 0.8;
+      }
+      #replyPreviewBar {
+        background-color: #1e1e1e;
+        padding: 10px 20px;
+        border-top: 1px solid var(--insta-gray);
+        display: none;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 14px;
+        color: #ddd;
+      }
+      .replying-to-label {
+        font-weight: 600;
+        color: var(--insta-blue);
+        display: block;
+        margin-bottom: 2px;
+      }
+
       /* --- Input Bar --- */
-      .input-area { padding: 20px; border-top: 1px solid var(--insta-gray); display: flex; align-items: center; gap: 15px; background: var(--insta-bg); }
-      .icon-btn { background: none; border: none; color: var(--text-main); font-size: 24px; cursor: pointer; padding: 5px; }
-      .icon-btn:hover { opacity: 0.7; }
-      #msgInput { flex: 1; padding: 14px 24px; border: 1px solid var(--insta-gray); border-radius: 30px; outline: none; font-size: 16px; background: #262626; color: white; }
-      #msgInput:focus { border-color: #555; }
-      #sendBtn { color: var(--insta-blue); background: none; border: none; font-weight: 600; font-size: 16px; cursor: pointer; }
-      #sendBtn:hover { color: white; }
+      .input-area {
+        padding: 20px;
+        border-top: 1px solid var(--insta-gray);
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        background: var(--insta-bg);
+      }
+      .icon-btn {
+        background: none;
+        border: none;
+        color: var(--text-main);
+        font-size: 24px;
+        cursor: pointer;
+        padding: 5px;
+      }
+      .icon-btn:hover {
+        opacity: 0.7;
+      }
+      #msgInput {
+        flex: 1;
+        padding: 14px 24px;
+        border: 1px solid var(--insta-gray);
+        border-radius: 30px;
+        outline: none;
+        font-size: 16px;
+        background: #262626;
+        color: white;
+      }
+      #msgInput:focus {
+        border-color: #555;
+      }
+      #sendBtn {
+        color: var(--insta-blue);
+        background: none;
+        border: none;
+        font-weight: 600;
+        font-size: 16px;
+        cursor: pointer;
+      }
+      #sendBtn:hover {
+        color: white;
+      }
 
       /* --- CAMERA & OVERLAYS --- */
-      #cameraOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 100; display: none; flex-direction: column; align-items: center; justify-content: center; }
-      #cameraVideo { width: 100%; max-height: 80vh; object-fit: cover; }
-      .camera-controls { position: absolute; bottom: 30px; display: flex; gap: 20px; align-items: center; }
-      #snapBtn { width: 70px; height: 70px; background: white; border-radius: 50%; border: 4px solid #ccc; cursor: pointer; }
-      #closeCameraBtn { color: white; background: none; border: none; font-size: 18px; cursor: pointer; padding: 10px; background: rgba(0,0,0,0.5); border-radius: 20px; }
-      #canvas { display: none; }
+      #cameraOverlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: #000;
+        z-index: 100;
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+      #cameraVideo {
+        width: 100%;
+        max-height: 80vh;
+        object-fit: cover;
+      }
+      .camera-controls {
+        position: absolute;
+        bottom: 30px;
+        display: flex;
+        gap: 20px;
+        align-items: center;
+      }
+      #snapBtn {
+        width: 70px;
+        height: 70px;
+        background: white;
+        border-radius: 50%;
+        border: 4px solid #ccc;
+        cursor: pointer;
+      }
+      #closeCameraBtn {
+        color: white;
+        background: none;
+        border: none;
+        font-size: 18px;
+        cursor: pointer;
+        padding: 10px;
+        background: rgba(0, 0, 0, 0.5);
+        border-radius: 20px;
+      }
+      #canvas {
+        display: none;
+      }
 
       /* --- TYPING & SEEN UI --- */
-      #typingWrapper { display: none; flex-direction: column; margin-bottom: 10px; margin-left: 10px; }
-      #typingIndicator { background-color: var(--msg-received); padding: 10px 16px; border-radius: 22px; border-bottom-left-radius: 4px; width: fit-content; }
-      .typing-dots { display: flex; align-items: center; gap: 4px; height: 14px; }
-      .dot { width: 6px; height: 6px; background-color: #888; border-radius: 50%; animation: bounce 1.4s infinite ease-in-out both; }
-      .dot:nth-child(1) { animation-delay: -0.32s; }
-      .dot:nth-child(2) { animation-delay: -0.16s; }
-      @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
-      .typing-label { font-size: 10px; color: #888; margin-bottom: 4px; display: block; }
-      #seenIndicator { text-align: right; font-size: 11px; color: var(--time-text); margin-right: 10px; margin-bottom: 5px; font-weight: 500; display: none; }
+      #typingWrapper {
+        display: none;
+        flex-direction: column;
+        margin-bottom: 10px;
+        margin-left: 10px;
+      }
+      #typingIndicator {
+        background-color: var(--msg-received);
+        padding: 10px 16px;
+        border-radius: 22px;
+        border-bottom-left-radius: 4px;
+        width: fit-content;
+      }
+      .typing-dots {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        height: 14px;
+      }
+      .dot {
+        width: 6px;
+        height: 6px;
+        background-color: #888;
+        border-radius: 50%;
+        animation: bounce 1.4s infinite ease-in-out both;
+      }
+      .dot:nth-child(1) {
+        animation-delay: -0.32s;
+      }
+      .dot:nth-child(2) {
+        animation-delay: -0.16s;
+      }
+      @keyframes bounce {
+        0%,
+        80%,
+        100% {
+          transform: scale(0);
+        }
+        40% {
+          transform: scale(1);
+        }
+      }
+      .typing-label {
+        font-size: 10px;
+        color: #888;
+        margin-bottom: 4px;
+        display: block;
+      }
+      #seenIndicator {
+        text-align: right;
+        font-size: 11px;
+        color: var(--time-text);
+        margin-right: 10px;
+        margin-bottom: 5px;
+        font-weight: 500;
+        display: none;
+      }
     </style>
   </head>
   <body>
@@ -101,47 +393,67 @@
         <div id="activeList"></div>
       </header>
 
-      <div id="messages">
-        </div>
-      
+      <div id="messages"></div>
+
       <div id="seenIndicator">Seen</div>
-      
+
       <div id="typingWrapper">
-         <div class="typing-label" id="typingLabel">Someone is typing...</div>
-         <div id="typingIndicator">
-            <div class="typing-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
-         </div>
+        <div class="typing-label" id="typingLabel">Someone is typing...</div>
+        <div id="typingIndicator">
+          <div class="typing-dots">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+          </div>
+        </div>
       </div>
 
       <div id="replyPreviewBar">
         <div class="reply-info">
           <span class="replying-to-label">Replying...</span>
-          <span id="replyPreviewText" style="color:#aaa;">Text</span>
+          <span id="replyPreviewText" style="color: #aaa">Text</span>
         </div>
-        <button id="cancelReplyBtn" style="background:none; border:none; color:#888; font-size:24px; cursor:pointer;">&times;</button>
+        <button
+          id="cancelReplyBtn"
+          style="
+            background: none;
+            border: none;
+            color: #888;
+            font-size: 24px;
+            cursor: pointer;
+          "
+        >
+          &times;
+        </button>
       </div>
 
       <div class="input-area">
         <input type="file" id="fileInput" accept="image/*" hidden />
         <button id="fileBtn" class="icon-btn">📎</button>
         <button id="cameraBtn" class="icon-btn">📷</button>
-        <input type="text" id="msgInput" placeholder="Message..." autocomplete="off" />
+        <input
+          type="text"
+          id="msgInput"
+          placeholder="Message..."
+          autocomplete="off"
+        />
         <button id="sendBtn">Send</button>
       </div>
     </div>
 
     <div id="cameraOverlay">
-        <video id="cameraVideo" autoplay playsinline></video>
-        <canvas id="canvas"></canvas>
-        <div class="camera-controls">
-            <button id="closeCameraBtn">Cancel</button>
-            <button id="snapBtn"></button>
-        </div>
+      <video id="cameraVideo" autoplay playsinline></video>
+      <canvas id="canvas"></canvas>
+      <div class="camera-controls">
+        <button id="closeCameraBtn">Cancel</button>
+        <button id="snapBtn"></button>
+      </div>
     </div>
 
     <script>
       const SUPABASE_URL = "https://xyvyocpdekeewoyvomuv.supabase.co";
-      const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5dnlvY3BkZWtlZXdveXZvbXV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxNjc0NTEsImV4cCI6MjA4NTc0MzQ1MX0.8VkWO7vxdm4GrMp2FCeF4Ds7sxUVWo1AxOrxbeu4f4Y";
+      const SUPABASE_KEY =
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5dnlvY3BkZWtlZXdveXZvbXV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxNjc0NTEsImV4cCI6MjA4NTc0MzQ1MX0.8VkWO7vxdm4GrMp2FCeF4Ds7sxUVWo1AxOrxbeu4f4Y";
       const { createClient } = supabase;
       const _supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -167,7 +479,7 @@
         const fileInput = document.getElementById("fileInput");
         const fileBtn = document.getElementById("fileBtn");
         const cameraBtn = document.getElementById("cameraBtn");
-        
+
         const typingWrapper = document.getElementById("typingWrapper");
         const typingLabel = document.getElementById("typingLabel");
         const seenIndicator = document.getElementById("seenIndicator");
@@ -182,170 +494,275 @@
         const canvas = document.getElementById("canvas");
 
         function formatTime(dateObj) {
-            return dateObj.toLocaleTimeString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+          return dateObj.toLocaleTimeString([], {
+            weekday: "short",
+            hour: "numeric",
+            minute: "2-digit",
+          });
         }
 
         async function updateMySeenStatus() {
-            try { await _supabase.from('user_presence').upsert({ username: myName, last_seen: new Date().toISOString() }); } catch(e) {}
+          try {
+            await _supabase
+              .from("user_presence")
+              .upsert({
+                username: myName,
+                last_seen: new Date().toISOString(),
+              });
+          } catch (e) {}
         }
 
         async function checkSeenStatus() {
-            if (!lastSentMessageTime) { seenIndicator.style.display = 'none'; return; }
-            const { data: users } = await _supabase.from('user_presence').select('*');
-            if(!users) return;
+          if (!lastSentMessageTime) {
+            seenIndicator.style.display = "none";
+            return;
+          }
+          const { data: users } = await _supabase
+            .from("user_presence")
+            .select("*");
+          if (!users) return;
 
-            const otherUser = users.find(u => u.username !== myName);
-            if (otherUser) {
-                const seenTime = new Date(otherUser.last_seen);
-                const msgTime = new Date(lastSentMessageTime);
-                if (seenTime > msgTime) {
-                    seenIndicator.style.display = 'block';
-                    const diffMins = Math.floor((new Date() - seenTime) / 60000);
-                    seenIndicator.innerText = diffMins < 2 ? "Seen" : `Seen ${diffMins}m`;
-                } else {
-                    seenIndicator.style.display = 'none';
-                }
+          const otherUser = users.find((u) => u.username !== myName);
+          if (otherUser) {
+            const seenTime = new Date(otherUser.last_seen);
+            const msgTime = new Date(lastSentMessageTime);
+            if (seenTime > msgTime) {
+              seenIndicator.style.display = "block";
+              const diffMins = Math.floor((new Date() - seenTime) / 60000);
+              seenIndicator.innerText =
+                diffMins < 2 ? "Seen" : `Seen ${diffMins}m`;
+            } else {
+              seenIndicator.style.display = "none";
             }
+          }
         }
         setInterval(checkSeenStatus, 10000);
-        msgInput.addEventListener('focus', updateMySeenStatus);
-        window.addEventListener('click', updateMySeenStatus);
+        msgInput.addEventListener("focus", updateMySeenStatus);
+        window.addEventListener("click", updateMySeenStatus);
 
         function renderMessage(data) {
-          // DUPLICATION CHECK: If message ID already exists, do not render again.
           if (data.id && document.getElementById(`msg-${data.id}`)) return;
 
-          typingWrapper.style.display = 'none'; 
+          typingWrapper.style.display = "none";
 
           const currentMsgTime = new Date(data.created_at);
-          if (!lastMessageTime || (currentMsgTime - lastMessageTime) > 5 * 60 * 1000) {
-              const timeDiv = document.createElement("div");
-              timeDiv.className = "time-separator";
-              timeDiv.innerText = formatTime(currentMsgTime);
-              msgDiv.insertBefore(timeDiv, seenIndicator);
-              lastMessageTime = currentMsgTime;
+          if (
+            !lastMessageTime ||
+            currentMsgTime - lastMessageTime > 5 * 60 * 1000
+          ) {
+            const timeDiv = document.createElement("div");
+            timeDiv.className = "time-separator";
+            timeDiv.innerText = formatTime(currentMsgTime);
+            msgDiv.insertBefore(timeDiv, seenIndicator);
+            lastMessageTime = currentMsgTime;
           }
 
           const isMe = data.sender === myName;
           if (isMe) {
-              lastSentMessageTime = data.created_at;
-              seenIndicator.style.display = 'none'; 
+            lastSentMessageTime = data.created_at;
+            seenIndicator.style.display = "none";
           } else {
-              updateMySeenStatus();
+            updateMySeenStatus();
           }
 
+          // Container for row
+          const rowDiv = document.createElement("div");
+          rowDiv.className = `message-row ${isMe ? "sent" : "received"}`;
+          if (data.id) rowDiv.id = `msg-${data.id}`;
+
+          // The Message Bubble
           const div = document.createElement("div");
-          // Add ID to prevent duplicates
-          if (data.id) div.id = `msg-${data.id}`;
-          
-          div.className = `message ${isMe ? "sent" : "received"}`;
-          div.ondblclick = () => initiateReply(data.message_type === 'image' ? '📷 Image' : data.content, data.sender);
+          div.className = "message";
+
+          // --- SWIPE TO REPLY LOGIC ---
+          let touchStartX = 0;
+          let currentTranslate = 0;
+
+          div.addEventListener(
+            "touchstart",
+            (e) => {
+              touchStartX = e.touches[0].clientX;
+              div.style.transition = "none"; // Instant move
+            },
+            { passive: true }
+          );
+
+          div.addEventListener(
+            "touchmove",
+            (e) => {
+              const touchX = e.touches[0].clientX;
+              const diff = touchX - touchStartX;
+              // Allow drag only to right, cap at 100px
+              if (diff > 0 && diff < 100) {
+                currentTranslate = diff;
+                div.style.transform = `translateX(${diff}px)`;
+              }
+            },
+            { passive: true }
+          );
+
+          div.addEventListener("touchend", () => {
+            div.style.transition =
+              "transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)";
+            div.style.transform = "translateX(0px)";
+
+            if (currentTranslate > 50) {
+              // Threshold to trigger reply
+              if (navigator.vibrate) navigator.vibrate(50); // Haptic feedback (Silent)
+              initiateReply(
+                data.message_type === "image" ? "📷 Image" : data.content,
+                data.sender
+              );
+            }
+            currentTranslate = 0;
+          });
+          // ---------------------------
 
           let replyBlock = "";
           if (data.reply_to) {
-             const rSender = data.reply_to.sender === myName ? "You" : data.reply_to.sender;
-             replyBlock = `<div class="reply-quote-block"><span class="reply-sender">${rSender}</span><span class="reply-text">${data.reply_to.text}</span></div>`;
+            const rSender =
+              data.reply_to.sender === myName ? "You" : data.reply_to.sender;
+            replyBlock = `<div class="reply-quote-block"><span class="reply-sender">${rSender}</span><span class="reply-text">${data.reply_to.text}</span></div>`;
           }
 
-          let contentHtml = data.message_type === 'image' 
-              ? `<img src="${data.image_url}" class="chat-image" loading="lazy" />` 
+          let contentHtml =
+            data.message_type === "image"
+              ? `<img src="${data.image_url}" class="chat-image" loading="lazy" />`
               : `<div>${data.content}</div>`;
 
-          let nameLabel = !isMe ? `<span class="sender-tag">${data.sender}</span>` : "";
+          let nameLabel = !isMe
+            ? `<span class="sender-tag">${data.sender}</span>`
+            : "";
+
           div.innerHTML = `${nameLabel} ${replyBlock} ${contentHtml}`;
-          
-          msgDiv.insertBefore(div, seenIndicator);
+
+          rowDiv.appendChild(div);
+          msgDiv.insertBefore(rowDiv, seenIndicator);
           msgDiv.scrollTop = msgDiv.scrollHeight;
         }
 
         function initiateReply(text, sender) {
-            currentReplyData = { text: text, sender: sender };
-            document.querySelector(".replying-to-label").innerText = `Replying to ${sender}`;
-            document.getElementById("replyPreviewText").innerText = text;
-            replyPreviewBar.style.display = "flex";
-            msgInput.focus();
+          currentReplyData = { text: text, sender: sender };
+          document.querySelector(
+            ".replying-to-label"
+          ).innerText = `Replying to ${sender}`;
+          document.getElementById("replyPreviewText").innerText = text;
+          replyPreviewBar.style.display = "flex";
+          msgInput.focus();
         }
         document.getElementById("cancelReplyBtn").onclick = () => {
-            currentReplyData = null;
-            replyPreviewBar.style.display = "none";
+          currentReplyData = null;
+          replyPreviewBar.style.display = "none";
         };
 
-        // TYPING
         msgInput.addEventListener("input", () => {
-             clearTimeout(typingTimeout);
-             if (!isTyping) {
-                 isTyping = true;
-                 roomChannel.send({ type: 'broadcast', event: 'typing', payload: { sender: myName, isTyping: true } });
-             }
-             typingTimeout = setTimeout(() => {
-                 isTyping = false;
-                 roomChannel.send({ type: 'broadcast', event: 'typing', payload: { sender: myName, isTyping: false } });
-             }, 2000);
+          clearTimeout(typingTimeout);
+          if (!isTyping) {
+            isTyping = true;
+            roomChannel.send({
+              type: "broadcast",
+              event: "typing",
+              payload: { sender: myName, isTyping: true },
+            });
+          }
+          typingTimeout = setTimeout(() => {
+            isTyping = false;
+            roomChannel.send({
+              type: "broadcast",
+              event: "typing",
+              payload: { sender: myName, isTyping: false },
+            });
+          }, 2000);
         });
 
-        // UPLOAD
         async function uploadAndSendImage(fileBlob) {
-            if (!fileBlob) return;
-            msgInput.placeholder = "Uploading...";
-            fileBtn.disabled = true;
-            cameraBtn.disabled = true;
-            const fileName = `${Date.now()}_captured.jpg`;
-            const { error } = await _supabase.storage.from('chat-images').upload(fileName, fileBlob, { contentType: 'image/jpeg' });
-            if (!error) {
-                const { data: urlData } = _supabase.storage.from('chat-images').getPublicUrl(fileName);
-                await _supabase.from("messages").insert([{ sender: myName, message_type: 'image', image_url: urlData.publicUrl, content: '📷 Image', reply_to: currentReplyData }]);
-            }
-            msgInput.placeholder = "Message...";
-            fileBtn.disabled = false;
-            cameraBtn.disabled = false;
-            fileInput.value = "";
-            if(currentReplyData) document.getElementById("cancelReplyBtn").click();
+          if (!fileBlob) return;
+          msgInput.placeholder = "Uploading...";
+          fileBtn.disabled = true;
+          cameraBtn.disabled = true;
+          const fileName = `${Date.now()}_captured.jpg`;
+          const { error } = await _supabase.storage
+            .from("chat-images")
+            .upload(fileName, fileBlob, { contentType: "image/jpeg" });
+          if (!error) {
+            const { data: urlData } = _supabase.storage
+              .from("chat-images")
+              .getPublicUrl(fileName);
+            await _supabase
+              .from("messages")
+              .insert([
+                {
+                  sender: myName,
+                  message_type: "image",
+                  image_url: urlData.publicUrl,
+                  content: "📷 Image",
+                  reply_to: currentReplyData,
+                },
+              ]);
+          }
+          msgInput.placeholder = "Message...";
+          fileBtn.disabled = false;
+          cameraBtn.disabled = false;
+          fileInput.value = "";
+          if (currentReplyData)
+            document.getElementById("cancelReplyBtn").click();
         }
         fileBtn.onclick = () => fileInput.click();
         fileInput.onchange = (e) => uploadAndSendImage(e.target.files[0]);
 
-        // CAMERA
         async function startCamera() {
-            try {
-                cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
-                cameraVideo.srcObject = cameraStream;
-                cameraOverlay.style.display = 'flex';
-            } catch (err) { alert("Camera access denied."); }
+          try {
+            cameraStream = await navigator.mediaDevices.getUserMedia({
+              video: { facingMode: "environment" },
+              audio: false,
+            });
+            cameraVideo.srcObject = cameraStream;
+            cameraOverlay.style.display = "flex";
+          } catch (err) {
+            alert("Camera access denied.");
+          }
         }
         function stopCamera() {
-            if (cameraStream) cameraStream.getTracks().forEach(track => track.stop());
-            cameraVideo.srcObject = null;
-            cameraOverlay.style.display = 'none';
+          if (cameraStream)
+            cameraStream.getTracks().forEach((track) => track.stop());
+          cameraVideo.srcObject = null;
+          cameraOverlay.style.display = "none";
         }
         function takePicture() {
-            canvas.width = cameraVideo.videoWidth;
-            canvas.height = cameraVideo.videoHeight;
-            canvas.getContext('2d').drawImage(cameraVideo, 0, 0, canvas.width, canvas.height);
-            canvas.toBlob((blob) => { stopCamera(); uploadAndSendImage(blob); }, 'image/jpeg', 0.8);
+          canvas.width = cameraVideo.videoWidth;
+          canvas.height = cameraVideo.videoHeight;
+          canvas
+            .getContext("2d")
+            .drawImage(cameraVideo, 0, 0, canvas.width, canvas.height);
+          canvas.toBlob(
+            (blob) => {
+              stopCamera();
+              uploadAndSendImage(blob);
+            },
+            "image/jpeg",
+            0.8
+          );
         }
         cameraBtn.onclick = startCamera;
         closeCameraBtn.onclick = stopCamera;
         snapBtn.onclick = takePicture;
 
-        // INIT & REALTIME
         async function fetchHistory() {
-          const { data, error } = await _supabase.from("messages").select("*").order("created_at", { ascending: true });
+          const { data, error } = await _supabase
+            .from("messages")
+            .select("*")
+            .order("created_at", { ascending: true });
           if (!error) {
-            // Remove old messages, keep the indicators
             const children = Array.from(msgDiv.children);
-            children.forEach(child => {
-                if (child.id !== 'seenIndicator' && child.id !== 'typingWrapper') {
-                    msgDiv.removeChild(child);
-                }
+            children.forEach((child) => {
+              if (
+                child.id !== "seenIndicator" &&
+                child.id !== "typingWrapper"
+              ) {
+                msgDiv.removeChild(child);
+              }
             });
-            lastMessageTime = null; 
-
-            if (data.length === 0) {
-                 const empty = document.createElement('div');
-                 empty.className = "time-separator";
-                 empty.innerText = "No messages yet.";
-                 msgDiv.insertBefore(empty, seenIndicator);
-            }
+            lastMessageTime = null;
             data.forEach(renderMessage);
             checkSeenStatus();
             updateMySeenStatus();
@@ -358,54 +775,88 @@
           msgInput.value = "";
           clearTimeout(typingTimeout);
           isTyping = false;
-          roomChannel.send({ type: 'broadcast', event: 'typing', payload: { sender: myName, isTyping: false } });
-          
-          // Insert into DB. The Realtime listener will see this and call renderMessage automatically.
-          await _supabase.from("messages").insert([{ content: content, sender: myName, message_type: 'text', reply_to: currentReplyData }]);
-          if(currentReplyData) document.getElementById("cancelReplyBtn").click();
-        }
-
-        // 1. Presence
-        const presenceChannel = _supabase.channel("online-users", { config: { presence: { key: myName } } });
-        presenceChannel.on("presence", { event: "sync" }, () => {
-             const state = presenceChannel.presenceState();
-             const users = Object.keys(state);
-             activeListDiv.innerHTML = users.map(name => {
-                 const initial = name.charAt(0).toUpperCase();
-                 return `<div class="user-status"><div class="avatar-circle"><div class="avatar-inner">${initial}</div></div><span class="status-dot"></span><span class="username-label">${name === myName ? "You" : name}</span></div>`;
-             }).join("");
-        }).subscribe(async (status) => { if(status === 'SUBSCRIBED') await presenceChannel.track({ online_at: new Date().toISOString() }); });
-
-        // 2. Chat Room
-        const roomChannel = _supabase.channel("chat-room")
-          .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, payload => {
-              console.log("New message received via Realtime!", payload);
-              renderMessage(payload.new);
-          })
-          .on("postgres_changes", { event: "*", schema: "public", table: "user_presence" }, () => checkSeenStatus())
-          .on("broadcast", { event: "typing" }, (payload) => {
-               if (payload.payload.sender !== myName) {
-                   if (payload.payload.isTyping) {
-                       typingWrapper.style.display = "flex";
-                       typingLabel.innerText = `${payload.payload.sender} is typing...`;
-                       msgDiv.scrollTop = msgDiv.scrollHeight;
-                   } else {
-                       typingWrapper.style.display = "none";
-                   }
-               }
-          })
-          .subscribe((status) => {
-              console.log("Supabase Realtime Status:", status);
-              if (status === 'SUBSCRIBED') {
-                  console.log("✅ Successfully connected to chat!");
-              }
-              if (status === 'CHANNEL_ERROR') {
-                  console.error("❌ Connection Error. Check your Supabase table policies.");
-              }
+          roomChannel.send({
+            type: "broadcast",
+            event: "typing",
+            payload: { sender: myName, isTyping: false },
           });
 
+          await _supabase
+            .from("messages")
+            .insert([
+              {
+                content: content,
+                sender: myName,
+                message_type: "text",
+                reply_to: currentReplyData,
+              },
+            ]);
+          if (currentReplyData)
+            document.getElementById("cancelReplyBtn").click();
+        }
+
+        const presenceChannel = _supabase.channel("online-users", {
+          config: { presence: { key: myName } },
+        });
+        presenceChannel
+          .on("presence", { event: "sync" }, () => {
+            const state = presenceChannel.presenceState();
+            const users = Object.keys(state);
+            activeListDiv.innerHTML = users
+              .map((name) => {
+                const initial = name.charAt(0).toUpperCase();
+                return `<div class="user-status"><div class="avatar-circle"><div class="avatar-inner">${initial}</div></div><span class="status-dot"></span><span class="username-label">${
+                  name === myName ? "You" : name
+                }</span></div>`;
+              })
+              .join("");
+          })
+          .subscribe(async (status) => {
+            if (status === "SUBSCRIBED")
+              await presenceChannel.track({
+                online_at: new Date().toISOString(),
+              });
+          });
+
+        const roomChannel = _supabase
+          .channel("chat-room")
+          .on(
+            "postgres_changes",
+            { event: "INSERT", schema: "public", table: "messages" },
+            (payload) => {
+              renderMessage(payload.new);
+            }
+          )
+          .on(
+            "postgres_changes",
+            { event: "DELETE", schema: "public", table: "messages" },
+            (payload) => {
+              const el = document.getElementById(`msg-${payload.old.id}`);
+              if (el) el.remove();
+            }
+          )
+          .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "user_presence" },
+            () => checkSeenStatus()
+          )
+          .on("broadcast", { event: "typing" }, (payload) => {
+            if (payload.payload.sender !== myName) {
+              if (payload.payload.isTyping) {
+                typingWrapper.style.display = "flex";
+                typingLabel.innerText = `${payload.payload.sender} is typing...`;
+                msgDiv.scrollTop = msgDiv.scrollHeight;
+              } else {
+                typingWrapper.style.display = "none";
+              }
+            }
+          })
+          .subscribe();
+
         sendBtn.onclick = sendMessage;
-        msgInput.addEventListener("keydown", (e) => { if (e.key === "Enter") sendMessage(); });
+        msgInput.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") sendMessage();
+        });
         fetchHistory();
       });
     </script>
