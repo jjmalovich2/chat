@@ -82,7 +82,7 @@
       #closeCameraBtn { color: white; background: none; border: none; font-size: 18px; cursor: pointer; padding: 10px; background: rgba(0,0,0,0.5); border-radius: 20px; }
       #canvas { display: none; }
 
-      /* --- TYPING --- */
+      /* --- TYPING & SEEN UI --- */
       #typingWrapper { display: none; flex-direction: column; margin-bottom: 10px; margin-left: 10px; }
       #typingIndicator { background-color: var(--msg-received); padding: 10px 16px; border-radius: 22px; border-bottom-left-radius: 4px; width: fit-content; }
       .typing-dots { display: flex; align-items: center; gap: 4px; height: 14px; }
@@ -91,8 +91,6 @@
       .dot:nth-child(2) { animation-delay: -0.16s; }
       @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
       .typing-label { font-size: 10px; color: #888; margin-bottom: 4px; display: block; }
-
-      /* --- SEEN INDICATOR --- */
       #seenIndicator { text-align: right; font-size: 11px; color: var(--time-text); margin-right: 10px; margin-bottom: 5px; font-weight: 500; display: none; }
     </style>
   </head>
@@ -171,32 +169,24 @@
         const cameraBtn = document.getElementById("cameraBtn");
         
         const typingWrapper = document.getElementById("typingWrapper");
-        const typingIndicator = document.getElementById("typingIndicator");
         const typingLabel = document.getElementById("typingLabel");
         const seenIndicator = document.getElementById("seenIndicator");
 
-        // --- DOM Elements Setup ---
-        // Ensure helper elements are inside msgDiv for scrolling
         msgDiv.appendChild(seenIndicator);
         msgDiv.appendChild(typingWrapper);
 
-        // --- Camera Logic ---
         const cameraOverlay = document.getElementById("cameraOverlay");
         const cameraVideo = document.getElementById("cameraVideo");
         const snapBtn = document.getElementById("snapBtn");
         const closeCameraBtn = document.getElementById("closeCameraBtn");
         const canvas = document.getElementById("canvas");
 
-
         function formatTime(dateObj) {
             return dateObj.toLocaleTimeString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' });
         }
 
-        // --- SEEN STATUS ---
         async function updateMySeenStatus() {
-            try {
-                await _supabase.from('user_presence').upsert({ username: myName, last_seen: new Date().toISOString() });
-            } catch(e) { console.log("Presence error", e); }
+            try { await _supabase.from('user_presence').upsert({ username: myName, last_seen: new Date().toISOString() }); } catch(e) {}
         }
 
         async function checkSeenStatus() {
@@ -221,8 +211,10 @@
         msgInput.addEventListener('focus', updateMySeenStatus);
         window.addEventListener('click', updateMySeenStatus);
 
-        // --- MESSAGE RENDERING ---
         function renderMessage(data) {
+          // DUPLICATION CHECK: If message ID already exists, do not render again.
+          if (data.id && document.getElementById(`msg-${data.id}`)) return;
+
           typingWrapper.style.display = 'none'; 
 
           const currentMsgTime = new Date(data.created_at);
@@ -243,6 +235,9 @@
           }
 
           const div = document.createElement("div");
+          // Add ID to prevent duplicates
+          if (data.id) div.id = `msg-${data.id}`;
+          
           div.className = `message ${isMe ? "sent" : "received"}`;
           div.ondblclick = () => initiateReply(data.message_type === 'image' ? '📷 Image' : data.content, data.sender);
 
@@ -275,7 +270,7 @@
             replyPreviewBar.style.display = "none";
         };
 
-        // --- TYPING ---
+        // TYPING
         msgInput.addEventListener("input", () => {
              clearTimeout(typingTimeout);
              if (!isTyping) {
@@ -288,7 +283,7 @@
              }, 2000);
         });
 
-        // --- UPLOAD ---
+        // UPLOAD
         async function uploadAndSendImage(fileBlob) {
             if (!fileBlob) return;
             msgInput.placeholder = "Uploading...";
@@ -309,7 +304,7 @@
         fileBtn.onclick = () => fileInput.click();
         fileInput.onchange = (e) => uploadAndSendImage(e.target.files[0]);
 
-        // --- CAMERA ---
+        // CAMERA
         async function startCamera() {
             try {
                 cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
@@ -332,18 +327,23 @@
         closeCameraBtn.onclick = stopCamera;
         snapBtn.onclick = takePicture;
 
-        // --- INIT ---
+        // INIT & REALTIME
         async function fetchHistory() {
           const { data, error } = await _supabase.from("messages").select("*").order("created_at", { ascending: true });
           if (!error) {
-            // Safely clear old messages without deleting our special divs
-            document.querySelectorAll('.message, .time-separator').forEach(el => el.remove());
+            // Remove old messages, keep the indicators
+            const children = Array.from(msgDiv.children);
+            children.forEach(child => {
+                if (child.id !== 'seenIndicator' && child.id !== 'typingWrapper') {
+                    msgDiv.removeChild(child);
+                }
+            });
             lastMessageTime = null; 
-            
+
             if (data.length === 0) {
                  const empty = document.createElement('div');
                  empty.className = "time-separator";
-                 empty.innerHTML = 'No messages yet.';
+                 empty.innerText = "No messages yet.";
                  msgDiv.insertBefore(empty, seenIndicator);
             }
             data.forEach(renderMessage);
@@ -359,11 +359,13 @@
           clearTimeout(typingTimeout);
           isTyping = false;
           roomChannel.send({ type: 'broadcast', event: 'typing', payload: { sender: myName, isTyping: false } });
+          
+          // Insert into DB. The Realtime listener will see this and call renderMessage automatically.
           await _supabase.from("messages").insert([{ content: content, sender: myName, message_type: 'text', reply_to: currentReplyData }]);
           if(currentReplyData) document.getElementById("cancelReplyBtn").click();
         }
 
-        // PRESENCE & REALTIME
+        // 1. Presence
         const presenceChannel = _supabase.channel("online-users", { config: { presence: { key: myName } } });
         presenceChannel.on("presence", { event: "sync" }, () => {
              const state = presenceChannel.presenceState();
@@ -374,8 +376,12 @@
              }).join("");
         }).subscribe(async (status) => { if(status === 'SUBSCRIBED') await presenceChannel.track({ online_at: new Date().toISOString() }); });
 
+        // 2. Chat Room
         const roomChannel = _supabase.channel("chat-room")
-          .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, payload => renderMessage(payload.new))
+          .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, payload => {
+              console.log("New message received via Realtime!", payload);
+              renderMessage(payload.new);
+          })
           .on("postgres_changes", { event: "*", schema: "public", table: "user_presence" }, () => checkSeenStatus())
           .on("broadcast", { event: "typing" }, (payload) => {
                if (payload.payload.sender !== myName) {
@@ -388,7 +394,15 @@
                    }
                }
           })
-          .subscribe();
+          .subscribe((status) => {
+              console.log("Supabase Realtime Status:", status);
+              if (status === 'SUBSCRIBED') {
+                  console.log("✅ Successfully connected to chat!");
+              }
+              if (status === 'CHANNEL_ERROR') {
+                  console.error("❌ Connection Error. Check your Supabase table policies.");
+              }
+          });
 
         sendBtn.onclick = sendMessage;
         msgInput.addEventListener("keydown", (e) => { if (e.key === "Enter") sendMessage(); });
