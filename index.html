@@ -310,9 +310,9 @@
         display: none;
       }
 
-      /* --- NEW: TYPING INDICATOR STYLES --- */
+      /* --- TYPING INDICATOR --- */
       #typingIndicator {
-        display: none; /* Hidden by default */
+        display: none;
         align-self: flex-start;
         background-color: var(--msg-received);
         padding: 10px 16px;
@@ -358,6 +358,17 @@
         margin-left: 10px;
         display: none;
       }
+
+      /* --- SEEN INDICATOR (NEW) --- */
+      #seenIndicator {
+        text-align: right;
+        font-size: 11px;
+        color: var(--time-text);
+        margin-right: 10px;
+        margin-bottom: 10px;
+        font-weight: 500;
+        display: none; /* Hidden by default until we confirm seen */
+      }
     </style>
   </head>
   <body>
@@ -379,6 +390,8 @@
           Loading chat...
         </div>
       </div>
+
+      <div id="seenIndicator">Seen</div>
 
       <div id="typingWrapper" style="display: none; flex-direction: column">
         <div class="typing-label" id="typingLabel">Someone is typing...</div>
@@ -444,10 +457,9 @@
       let currentReplyData = null;
       let lastMessageTime = null;
       let cameraStream = null;
-
-      // Typing Logic Variables
       let typingTimeout = null;
       let isTyping = false;
+      let lastSentMessageTime = null; // Track the time of the last message I sent
 
       window.addEventListener("DOMContentLoaded", () => {
         let myName = localStorage.getItem("chat-user");
@@ -465,13 +477,14 @@
         const fileBtn = document.getElementById("fileBtn");
         const cameraBtn = document.getElementById("cameraBtn");
 
-        // Typing Elements
         const typingWrapper = document.getElementById("typingWrapper");
         const typingIndicator = document.getElementById("typingIndicator");
         const typingLabel = document.getElementById("typingLabel");
 
-        // Move typing bubble into messages container so it scrolls
-        msgDiv.appendChild(typingWrapper);
+        // Seen Element
+        const seenIndicator = document.getElementById("seenIndicator");
+        msgDiv.appendChild(seenIndicator); // Move seen to end
+        msgDiv.appendChild(typingWrapper); // Move typing to end
 
         // Camera Logic
         const cameraOverlay = document.getElementById("cameraOverlay");
@@ -488,9 +501,66 @@
           });
         }
 
+        // --- NEW: UPDATE MY LAST SEEN STATUS ---
+        async function updateMySeenStatus() {
+          // Update the 'user_presence' table saying I am active right now
+          await _supabase.from("user_presence").upsert({
+            username: myName,
+            last_seen: new Date().toISOString(),
+          });
+        }
+
+        // --- NEW: CALCULATE SEEN TEXT ---
+        async function checkSeenStatus() {
+          // 1. If I haven't sent a message, I don't care
+          if (!lastSentMessageTime) {
+            seenIndicator.style.display = "none";
+            return;
+          }
+
+          // 2. Get everyone's status
+          const { data: users } = await _supabase
+            .from("user_presence")
+            .select("*");
+          if (!users) return;
+
+          // 3. Find the OTHER person (anyone who isn't me)
+          const otherUser = users.find((u) => u.username !== myName);
+
+          if (otherUser) {
+            const seenTime = new Date(otherUser.last_seen);
+            const msgTime = new Date(lastSentMessageTime);
+
+            // 4. Did they see it? (Is their Last Seen time AFTER my message time?)
+            if (seenTime > msgTime) {
+              seenIndicator.style.display = "block";
+
+              // 5. Calculate minutes elapsed since they saw it
+              // Note: strictly speaking, we only know when they were LAST active.
+              // To show "Seen Xm ago", we compare NOW vs their Last Seen time.
+              const now = new Date();
+              const diffMs = now - seenTime;
+              const diffMins = Math.floor(diffMs / 60000); // convert ms to minutes
+
+              if (diffMins < 2) {
+                seenIndicator.innerText = "Seen";
+              } else {
+                seenIndicator.innerText = `Seen ${diffMins}m`;
+              }
+            } else {
+              seenIndicator.style.display = "none"; // They haven't seen it yet
+            }
+          }
+        }
+
+        // Check seen status every 10 seconds to update the "Xm" text
+        setInterval(checkSeenStatus, 10000);
+        // Also update my own status when I type or focus
+        msgInput.addEventListener("focus", updateMySeenStatus);
+        window.addEventListener("click", updateMySeenStatus);
+
         function renderMessage(data) {
-          // Hide typing indicator temporarily if a new message arrives
-          typingWrapper.style.display = "none";
+          typingWrapper.style.display = "none"; // Hide typing if new msg comes
 
           const currentMsgTime = new Date(data.created_at);
           if (
@@ -500,11 +570,21 @@
             const timeDiv = document.createElement("div");
             timeDiv.className = "time-separator";
             timeDiv.innerText = formatTime(currentMsgTime);
-            msgDiv.insertBefore(timeDiv, typingWrapper); // Insert before typing bubble
+            msgDiv.insertBefore(timeDiv, seenIndicator);
             lastMessageTime = currentMsgTime;
           }
 
           const isMe = data.sender === myName;
+
+          // Track my last sent message time for Seen logic
+          if (isMe) {
+            lastSentMessageTime = data.created_at;
+            seenIndicator.style.display = "none"; // Reset seen until we verify
+          } else {
+            // If I received a message, I am seeing it now!
+            updateMySeenStatus();
+          }
+
           const div = document.createElement("div");
           div.className = `message ${isMe ? "sent" : "received"}`;
           div.ondblclick = () =>
@@ -532,7 +612,8 @@
             : "";
           div.innerHTML = `${nameLabel} ${replyBlock} ${contentHtml}`;
 
-          msgDiv.insertBefore(div, typingWrapper); // Insert before typing bubble
+          // Insert BEFORE the Seen Indicator and Typing Wrapper
+          msgDiv.insertBefore(div, seenIndicator);
           msgDiv.scrollTop = msgDiv.scrollHeight;
         }
 
@@ -550,13 +631,9 @@
           replyPreviewBar.style.display = "none";
         };
 
-        // --- TYPING BROADCAST LOGIC ---
-        // 1. Detect when I am typing
+        // --- TYPING BROADCAST ---
         msgInput.addEventListener("input", () => {
-          // Clear previous timeout
           clearTimeout(typingTimeout);
-
-          // If I wasn't already typing, send "start" signal
           if (!isTyping) {
             isTyping = true;
             roomChannel.send({
@@ -565,8 +642,6 @@
               payload: { sender: myName, isTyping: true },
             });
           }
-
-          // Set timeout to send "stop" signal after 2 seconds of silence
           typingTimeout = setTimeout(() => {
             isTyping = false;
             roomChannel.send({
@@ -654,25 +729,28 @@
         closeCameraBtn.onclick = stopCamera;
         snapBtn.onclick = takePicture;
 
-        // --- HISTORY & SEND ---
+        // --- HISTORY & INIT ---
         async function fetchHistory() {
           const { data, error } = await _supabase
             .from("messages")
             .select("*")
             .order("created_at", { ascending: true });
           if (!error) {
-            // Clear everything except typing wrapper
-            Array.from(msgDiv.children).forEach((child) => {
-              if (child.id !== "typingWrapper") msgDiv.removeChild(child);
-            });
-            lastMessageTime = null;
+            // Clear messages but keep Wrapper divs
+            const tempDiv = document.createElement("div");
+
+            // Rebuild message list
             if (data.length === 0) {
               const empty = document.createElement("div");
               empty.innerHTML =
                 '<div style="text-align:center; color:#666; margin-top:20px;">No messages yet.</div>';
-              msgDiv.insertBefore(empty, typingWrapper);
+              msgDiv.insertBefore(empty, seenIndicator);
             }
             data.forEach(renderMessage);
+
+            // Check seen status immediately after loading history
+            checkSeenStatus();
+            updateMySeenStatus();
           }
         }
 
@@ -681,7 +759,6 @@
           if (!content) return;
           msgInput.value = "";
 
-          // Stop typing indicator immediately when sending
           clearTimeout(typingTimeout);
           isTyping = false;
           roomChannel.send({
@@ -702,8 +779,6 @@
             document.getElementById("cancelReplyBtn").click();
         }
 
-        // --- REALTIME SETUP ---
-        // 1. Online Presence
         const presenceChannel = _supabase.channel("online-users", {
           config: { presence: { key: myName } },
         });
@@ -727,18 +802,20 @@
               });
           });
 
-        // 2. Chat Room (Messages + Typing)
         const roomChannel = _supabase
           .channel("chat-room")
-          // Listen for new database rows
           .on(
             "postgres_changes",
             { event: "INSERT", schema: "public", table: "messages" },
             (payload) => renderMessage(payload.new)
           )
-          // Listen for typing broadcasts
+          // Listen for Seen Status updates (Activity)
+          .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "user_presence" },
+            () => checkSeenStatus()
+          )
           .on("broadcast", { event: "typing" }, (payload) => {
-            // Only show if it's NOT me
             if (payload.payload.sender !== myName) {
               if (payload.payload.isTyping) {
                 typingWrapper.style.display = "flex";
