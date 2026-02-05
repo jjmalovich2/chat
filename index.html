@@ -19,37 +19,36 @@
         --msg-received: #262626;
         --msg-sent: #3797f0;
         --text-main: #f5f5f5;
-        --time-text: #8e8e8e; /* Color for the timestamps */
+        --time-text: #8e8e8e;
       }
 
       body {
-        background-color: #121212;
+        background-color: var(--insta-bg); /* Body background matches chat */
         color: var(--text-main);
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
           Helvetica, Arial, sans-serif;
         margin: 0;
         display: flex;
-        justify-content: center;
+        flex-direction: column;
         height: 100vh;
+        overflow: hidden; /* Prevent body scroll, let chat scroll */
       }
 
+      /* --- FULL SCREEN WRAPPER --- */
       .chat-wrapper {
         width: 100%;
-        max-width: 450px;
-        background: var(--insta-bg);
+        height: 100%;
         display: flex;
         flex-direction: column;
-        border-left: 1px solid var(--insta-gray);
-        border-right: 1px solid var(--insta-gray);
-        box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-        position: relative;
+        background: var(--insta-bg);
+        /* Removed borders and max-width for full screen look */
       }
 
       /* --- Header --- */
       header {
         background: var(--insta-bg);
         border-bottom: 1px solid var(--insta-gray);
-        padding: 10px 0;
+        padding: 10px 20px; /* Added side padding */
         z-index: 10;
       }
       .header-main h3 {
@@ -64,7 +63,7 @@
       #activeList {
         display: flex;
         gap: 15px;
-        padding: 5px 15px;
+        padding: 5px 0;
         overflow-x: auto;
         scrollbar-width: none;
       }
@@ -127,30 +126,36 @@
       #messages {
         flex: 1;
         overflow-y: auto;
-        padding: 15px;
+        padding: 20px; /* More padding for desktop comfort */
         display: flex;
         flex-direction: column;
         gap: 8px;
       }
 
-      /* NEW: Timestamp Separator */
       .time-separator {
         text-align: center;
         color: var(--time-text);
-        font-size: 11px;
+        font-size: 12px;
         font-weight: 500;
-        margin: 15px 0 5px 0;
+        margin: 20px 0 10px 0;
       }
 
       .message {
-        padding: 10px 16px;
+        padding: 12px 18px; /* Slightly larger padding */
         border-radius: 22px;
-        max-width: 75%;
-        font-size: 14px;
-        line-height: 1.4;
+        max-width: 60%; /* Limit width on wide screens so lines aren't too long */
+        font-size: 15px; /* Slightly larger font */
+        line-height: 1.5;
         word-wrap: break-word;
         position: relative;
         cursor: pointer;
+      }
+
+      /* Mobile override: keep bubbles wider on small screens */
+      @media (max-width: 768px) {
+        .message {
+          max-width: 80%;
+        }
       }
 
       .sent {
@@ -165,9 +170,9 @@
         border-bottom-left-radius: 4px;
       }
       .sender-tag {
-        font-size: 10px;
+        font-size: 11px;
         font-weight: 600;
-        margin-bottom: 2px;
+        margin-bottom: 4px;
         opacity: 0.7;
         color: #aaa;
         margin-left: 10px;
@@ -175,6 +180,8 @@
 
       .chat-image {
         max-width: 100%;
+        max-height: 400px;
+        object-fit: contain;
         border-radius: 12px;
         margin-top: 5px;
         display: block;
@@ -187,7 +194,7 @@
         padding: 8px 10px;
         border-radius: 8px;
         margin-bottom: 6px;
-        font-size: 12px;
+        font-size: 13px;
         display: flex;
         flex-direction: column;
       }
@@ -205,12 +212,12 @@
 
       #replyPreviewBar {
         background-color: #1e1e1e;
-        padding: 10px 15px;
+        padding: 10px 20px;
         border-top: 1px solid var(--insta-gray);
         display: none;
         justify-content: space-between;
         align-items: center;
-        font-size: 13px;
+        font-size: 14px;
         color: #ddd;
       }
       .replying-to-label {
@@ -222,11 +229,11 @@
 
       /* --- Input Bar --- */
       .input-area {
-        padding: 15px;
+        padding: 20px;
         border-top: 1px solid var(--insta-gray);
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 15px;
         background: var(--insta-bg);
       }
 
@@ -234,27 +241,38 @@
         background: none;
         border: none;
         color: var(--text-main);
-        font-size: 20px;
+        font-size: 24px;
         cursor: pointer;
         padding: 5px;
       }
+      #imageBtn:hover {
+        opacity: 0.7;
+      }
+
       #msgInput {
         flex: 1;
-        padding: 12px 20px;
+        padding: 14px 24px;
         border: 1px solid var(--insta-gray);
-        border-radius: 25px;
+        border-radius: 30px;
         outline: none;
-        font-size: 15px;
+        font-size: 16px;
         background: #262626;
         color: white;
       }
+      #msgInput:focus {
+        border-color: #555;
+      }
+
       #sendBtn {
         color: var(--insta-blue);
         background: none;
         border: none;
         font-weight: 600;
-        font-size: 15px;
+        font-size: 16px;
         cursor: pointer;
+      }
+      #sendBtn:hover {
+        color: white;
       }
     </style>
   </head>
@@ -285,7 +303,13 @@
         </div>
         <button
           id="cancelReplyBtn"
-          style="background: none; border: none; color: #888; font-size: 20px"
+          style="
+            background: none;
+            border: none;
+            color: #888;
+            font-size: 24px;
+            cursor: pointer;
+          "
         >
           &times;
         </button>
@@ -314,7 +338,7 @@
       const _supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
       let currentReplyData = null;
-      let lastMessageTime = null; // Tracks the time of the previous message
+      let lastMessageTime = null;
 
       window.addEventListener("DOMContentLoaded", () => {
         let myName = localStorage.getItem("chat-user");
@@ -331,9 +355,7 @@
         const imageBtn = document.getElementById("imageBtn");
         const fileInput = document.getElementById("fileInput");
 
-        // --- HELPER: FORMAT TIME ---
         function formatTime(dateObj) {
-          // Returns: "Mon 10:30 AM" or similar based on locale
           return dateObj.toLocaleTimeString([], {
             weekday: "short",
             hour: "numeric",
@@ -341,12 +363,8 @@
           });
         }
 
-        // --- RENDER MESSAGE ---
         function renderMessage(data) {
           const currentMsgTime = new Date(data.created_at);
-
-          // 1. CALCULATE TIME DIFFERENCE
-          // If no last time (first msg) OR diff > 5 minutes (300000ms)
           if (
             !lastMessageTime ||
             currentMsgTime - lastMessageTime > 5 * 60 * 1000
@@ -355,12 +373,9 @@
             timeDiv.className = "time-separator";
             timeDiv.innerText = formatTime(currentMsgTime);
             msgDiv.appendChild(timeDiv);
-
-            // Update the tracker to this new timestamp
             lastMessageTime = currentMsgTime;
           }
 
-          // 2. CREATE BUBBLE
           const isMe = data.sender === myName;
           const div = document.createElement("div");
           div.className = `message ${isMe ? "sent" : "received"}`;
@@ -370,7 +385,6 @@
               data.sender
             );
 
-          // Reply Block
           let replyBlock = "";
           if (data.reply_to) {
             const rSender =
@@ -378,7 +392,6 @@
             replyBlock = `<div class="reply-quote-block"><span class="reply-sender">${rSender}</span><span class="reply-text">${data.reply_to.text}</span></div>`;
           }
 
-          // Content
           let contentHtml = "";
           if (data.message_type === "image") {
             contentHtml = `<img src="${data.image_url}" class="chat-image" loading="lazy" />`;
@@ -389,13 +402,11 @@
           let nameLabel = !isMe
             ? `<span class="sender-tag">${data.sender}</span>`
             : "";
-
           div.innerHTML = `${nameLabel} ${replyBlock} ${contentHtml}`;
           msgDiv.appendChild(div);
           msgDiv.scrollTop = msgDiv.scrollHeight;
         }
 
-        // --- REPLY LOGIC ---
         function initiateReply(text, sender) {
           currentReplyData = { text: text, sender: sender };
           document.querySelector(
@@ -410,7 +421,6 @@
           replyPreviewBar.style.display = "none";
         };
 
-        // --- IMAGE UPLOAD ---
         imageBtn.onclick = () => fileInput.click();
         fileInput.onchange = async (e) => {
           const file = e.target.files[0];
@@ -444,7 +454,6 @@
             document.getElementById("cancelReplyBtn").click();
         };
 
-        // --- HISTORY ---
         async function fetchHistory() {
           const { data, error } = await _supabase
             .from("messages")
@@ -452,17 +461,14 @@
             .order("created_at", { ascending: true });
           if (!error) {
             msgDiv.innerHTML = "";
-            lastMessageTime = null; // Reset time tracker for history load
-
+            lastMessageTime = null;
             if (data.length === 0)
               msgDiv.innerHTML =
                 '<div style="text-align:center; color:#666; margin-top:20px;">No messages yet.</div>';
-
             data.forEach(renderMessage);
           }
         }
 
-        // --- TEXT SEND ---
         async function sendMessage() {
           const content = msgInput.value.trim();
           if (!content) return;
@@ -480,7 +486,6 @@
             document.getElementById("cancelReplyBtn").click();
         }
 
-        // --- REALTIME ---
         const presenceChannel = _supabase.channel("online-users", {
           config: { presence: { key: myName } },
         });
