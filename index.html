@@ -14,12 +14,11 @@
       /* --- DARK MODE CONFIG --- */
       :root {
         --insta-bg: #000000;
-        --insta-gray: #262626; /* Slightly lighter for borders */
+        --insta-gray: #262626;
         --insta-blue: #0095f6;
         --msg-received: #262626;
         --msg-sent: #3797f0;
         --text-main: #f5f5f5;
-        --reply-bg: rgba(255, 255, 255, 0.1);
       }
 
       body {
@@ -136,17 +135,12 @@
       .message {
         padding: 10px 16px;
         border-radius: 22px;
-        max-width: 70%;
+        max-width: 75%; /* Slightly wider for images */
         font-size: 14px;
         line-height: 1.4;
         word-wrap: break-word;
         position: relative;
-        cursor: pointer; /* Indicates clickable */
-        transition: transform 0.1s;
-      }
-
-      .message:active {
-        transform: scale(0.98);
+        cursor: pointer;
       }
 
       .sent {
@@ -160,7 +154,6 @@
         background-color: var(--msg-received);
         border-bottom-left-radius: 4px;
       }
-
       .sender-tag {
         font-size: 10px;
         font-weight: 600;
@@ -170,8 +163,15 @@
         margin-left: 10px;
       }
 
+      /* --- Image Styling --- */
+      .chat-image {
+        max-width: 100%;
+        border-radius: 12px;
+        margin-top: 5px;
+        display: block;
+      }
+
       /* --- Reply Styling --- */
-      /* The block inside the bubble */
       .reply-quote-block {
         background-color: rgba(0, 0, 0, 0.2);
         border-left: 3px solid rgba(255, 255, 255, 0.5);
@@ -181,7 +181,6 @@
         font-size: 12px;
         display: flex;
         flex-direction: column;
-        opacity: 0.9;
       }
       .reply-sender {
         font-weight: 700;
@@ -195,41 +194,21 @@
         opacity: 0.8;
       }
 
-      /* The Preview Bar above input */
       #replyPreviewBar {
         background-color: #1e1e1e;
         padding: 10px 15px;
         border-top: 1px solid var(--insta-gray);
-        display: none; /* Hidden by default */
+        display: none;
         justify-content: space-between;
         align-items: center;
         font-size: 13px;
         color: #ddd;
       }
-      .reply-info {
-        display: flex;
-        flex-direction: column;
-        width: 90%;
-      }
       .replying-to-label {
         font-weight: 600;
         color: var(--insta-blue);
+        display: block;
         margin-bottom: 2px;
-      }
-      .reply-preview-text {
-        color: #aaa;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-
-      #cancelReplyBtn {
-        background: none;
-        border: none;
-        color: #888;
-        font-size: 20px;
-        cursor: pointer;
-        padding: 0 5px;
       }
 
       /* --- Input Bar --- */
@@ -242,6 +221,14 @@
         background: var(--insta-bg);
       }
 
+      #imageBtn {
+        background: none;
+        border: none;
+        color: var(--text-main);
+        font-size: 20px;
+        cursor: pointer;
+        padding: 5px;
+      }
       #msgInput {
         flex: 1;
         padding: 12px 20px;
@@ -251,9 +238,6 @@
         font-size: 15px;
         background: #262626;
         color: white;
-      }
-      #msgInput:focus {
-        border-color: #555;
       }
       #sendBtn {
         color: var(--insta-blue);
@@ -287,15 +271,22 @@
 
       <div id="replyPreviewBar">
         <div class="reply-info">
-          <span class="replying-to-label">Replying to...</span>
-          <span class="reply-preview-text" id="replyPreviewText"
-            >Message content...</span
-          >
+          <span class="replying-to-label">Replying...</span>
+          <span id="replyPreviewText" style="color: #aaa">Text</span>
         </div>
-        <button id="cancelReplyBtn">&times;</button>
+        <button
+          id="cancelReplyBtn"
+          style="background: none; border: none; color: #888; font-size: 20px"
+        >
+          &times;
+        </button>
       </div>
 
       <div class="input-area">
+        <input type="file" id="fileInput" accept="image/*" hidden />
+
+        <button id="imageBtn">📷</button>
+
         <input
           type="text"
           id="msgInput"
@@ -315,8 +306,7 @@
       const { createClient } = supabase;
       const _supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-      // GLOBAL STATE FOR REPLIES
-      let currentReplyData = null; // Stores { text, sender }
+      let currentReplyData = null;
 
       window.addEventListener("DOMContentLoaded", () => {
         let myName = localStorage.getItem("chat-user");
@@ -330,43 +320,43 @@
         const msgDiv = document.getElementById("messages");
         const activeListDiv = document.getElementById("activeList");
         const replyPreviewBar = document.getElementById("replyPreviewBar");
-        const replyPreviewText = document.getElementById("replyPreviewText");
-        const cancelReplyBtn = document.getElementById("cancelReplyBtn");
+
+        // Image Elements
+        const imageBtn = document.getElementById("imageBtn");
+        const fileInput = document.getElementById("fileInput");
 
         // --- RENDER MESSAGE ---
         function renderMessage(data) {
           const isMe = data.sender === myName;
           const div = document.createElement("div");
           div.className = `message ${isMe ? "sent" : "received"}`;
+          div.ondblclick = () =>
+            initiateReply(
+              data.message_type === "image" ? "📷 Image" : data.content,
+              data.sender
+            );
 
-          // Add Double Click Event to Reply
-          div.ondblclick = () => initiateReply(data.content, data.sender);
-
-          // 1. Check if there is a reply
+          // Reply Block
           let replyBlock = "";
           if (data.reply_to) {
             const rSender =
               data.reply_to.sender === myName ? "You" : data.reply_to.sender;
-            replyBlock = `
-                <div class="reply-quote-block">
-                    <span class="reply-sender">${rSender}</span>
-                    <span class="reply-text">${data.reply_to.text}</span>
-                </div>
-             `;
+            replyBlock = `<div class="reply-quote-block"><span class="reply-sender">${rSender}</span><span class="reply-text">${data.reply_to.text}</span></div>`;
           }
 
-          // 2. Sender Tag (only if received)
-          let nameLabel = "";
-          if (!isMe) {
-            nameLabel = `<span class="sender-tag">${data.sender}</span>`;
+          // Content Logic (Text vs Image)
+          let contentHtml = "";
+          if (data.message_type === "image") {
+            contentHtml = `<img src="${data.image_url}" class="chat-image" loading="lazy" />`;
+          } else {
+            contentHtml = `<div>${data.content}</div>`;
           }
 
-          div.innerHTML = `
-             ${nameLabel}
-             ${replyBlock} 
-             <div>${data.content}</div>
-          `;
+          let nameLabel = !isMe
+            ? `<span class="sender-tag">${data.sender}</span>`
+            : "";
 
+          div.innerHTML = `${nameLabel} ${replyBlock} ${contentHtml}`;
           msgDiv.appendChild(div);
           msgDiv.scrollTop = msgDiv.scrollHeight;
         }
@@ -374,24 +364,66 @@
         // --- REPLY LOGIC ---
         function initiateReply(text, sender) {
           currentReplyData = { text: text, sender: sender };
-
-          // Show the preview bar
-          const displaySender = sender === myName ? "yourself" : sender;
           document.querySelector(
             ".replying-to-label"
-          ).innerText = `Replying to ${displaySender}`;
-          replyPreviewText.innerText = text;
+          ).innerText = `Replying to ${sender}`;
+          document.getElementById("replyPreviewText").innerText = text;
           replyPreviewBar.style.display = "flex";
-
           msgInput.focus();
         }
-
-        function clearReply() {
+        document.getElementById("cancelReplyBtn").onclick = () => {
           currentReplyData = null;
           replyPreviewBar.style.display = "none";
-        }
+        };
 
-        cancelReplyBtn.onclick = clearReply;
+        // --- IMAGE UPLOAD LOGIC ---
+        imageBtn.onclick = () => fileInput.click(); // Trigger hidden input
+
+        fileInput.onchange = async (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+
+          // Simple "Uploading..." indicator in placeholder
+          msgInput.placeholder = "Uploading image...";
+          imageBtn.disabled = true;
+
+          const fileName = `${Date.now()}_${file.name.replace(/\s/g, "_")}`;
+
+          // 1. Upload to Supabase Storage
+          const { data, error } = await _supabase.storage
+            .from("chat-images")
+            .upload(fileName, file);
+
+          if (error) {
+            alert("Upload failed: " + error.message);
+            msgInput.placeholder = "Message...";
+            imageBtn.disabled = false;
+            return;
+          }
+
+          // 2. Get Public URL
+          const { data: urlData } = _supabase.storage
+            .from("chat-images")
+            .getPublicUrl(fileName);
+
+          // 3. Send Message Record
+          const payload = {
+            sender: myName,
+            message_type: "image",
+            image_url: urlData.publicUrl,
+            content: "📷 Image", // Fallback text
+            reply_to: currentReplyData,
+          };
+
+          await _supabase.from("messages").insert([payload]);
+
+          // Reset UI
+          msgInput.placeholder = "Message...";
+          imageBtn.disabled = false;
+          fileInput.value = ""; // Clear input
+          if (currentReplyData)
+            document.getElementById("cancelReplyBtn").click();
+        };
 
         // --- HISTORY ---
         async function fetchHistory() {
@@ -399,7 +431,6 @@
             .from("messages")
             .select("*")
             .order("created_at", { ascending: true });
-
           if (!error) {
             msgDiv.innerHTML = "";
             if (data.length === 0)
@@ -409,34 +440,26 @@
           }
         }
 
-        // --- SEND ---
+        // --- TEXT SEND ---
         async function sendMessage() {
           const content = msgInput.value.trim();
           if (!content) return;
-
           msgInput.value = "";
 
-          // Prepare payload
-          const payload = {
-            content: content,
-            sender: myName,
-            reply_to: currentReplyData, // Add reply data if exists
-          };
+          await _supabase.from("messages").insert([
+            {
+              content: content,
+              sender: myName,
+              message_type: "text",
+              reply_to: currentReplyData,
+            },
+          ]);
 
-          // Clear reply state immediately after sending
-          clearReply();
-
-          const { error } = await _supabase.from("messages").insert([payload]);
-
-          if (error) {
-            console.error(error);
-            alert(
-              "Failed to send message! Did you add the 'reply_to' column in Supabase?"
-            );
-          }
+          if (currentReplyData)
+            document.getElementById("cancelReplyBtn").click();
         }
 
-        // --- PRESENCE & REALTIME ---
+        // --- REALTIME & PRESENCE ---
         const presenceChannel = _supabase.channel("online-users", {
           config: { presence: { key: myName } },
         });
@@ -473,7 +496,6 @@
         msgInput.addEventListener("keydown", (e) => {
           if (e.key === "Enter") sendMessage();
         });
-
         fetchHistory();
       });
     </script>
