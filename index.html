@@ -157,14 +157,17 @@
         line-height: 1.5;
         word-wrap: break-word;
         position: relative;
-        cursor: pointer;
-        /* Important for swipe animation */
+        cursor: grab; /* Shows hand cursor */
+        user-select: none; /* Helps prevent highlighting while dragging */
         touch-action: pan-y;
         transform: translateX(0);
         will-change: transform;
         display: flex;
         flex-direction: column;
         z-index: 2;
+      }
+      .message:active {
+        cursor: grabbing;
       }
 
       .sent .message {
@@ -565,57 +568,71 @@
             updateMySeenStatus();
           }
 
-          // Container for row
           const rowDiv = document.createElement("div");
           rowDiv.className = `message-row ${isMe ? "sent" : "received"}`;
           if (data.id) rowDiv.id = `msg-${data.id}`;
 
-          // The Message Bubble
           const div = document.createElement("div");
           div.className = "message";
 
-          // --- SWIPE TO REPLY LOGIC ---
-          let touchStartX = 0;
+          // --- MOUSE & TOUCH SWIPE LOGIC ---
+          let startX = 0;
           let currentTranslate = 0;
+          let isDragging = false;
 
-          div.addEventListener(
-            "touchstart",
-            (e) => {
-              touchStartX = e.touches[0].clientX;
-              div.style.transition = "none"; // Instant move
-            },
-            { passive: true }
-          );
+          const startDrag = (clientX) => {
+            startX = clientX;
+            isDragging = true;
+            div.style.transition = "none";
+          };
 
-          div.addEventListener(
-            "touchmove",
-            (e) => {
-              const touchX = e.touches[0].clientX;
-              const diff = touchX - touchStartX;
-              // Allow drag only to right, cap at 100px
-              if (diff > 0 && diff < 100) {
-                currentTranslate = diff;
-                div.style.transform = `translateX(${diff}px)`;
-              }
-            },
-            { passive: true }
-          );
+          const moveDrag = (clientX, e) => {
+            if (!isDragging) return;
+            const diff = clientX - startX;
+            // Only allow dragging to the right (positive diff), max 100px
+            if (diff > 0 && diff < 100) {
+              // Prevent text highlighting if we are dragging
+              if (e && diff > 5) e.preventDefault();
+              currentTranslate = diff;
+              div.style.transform = `translateX(${diff}px)`;
+            }
+          };
 
-          div.addEventListener("touchend", () => {
+          const endDrag = () => {
+            if (!isDragging) return;
+            isDragging = false;
             div.style.transition =
               "transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)";
             div.style.transform = "translateX(0px)";
 
             if (currentTranslate > 50) {
-              // Threshold to trigger reply
-              if (navigator.vibrate) navigator.vibrate(50); // Haptic feedback (Silent)
+              if (navigator.vibrate) navigator.vibrate(50);
               initiateReply(
                 data.message_type === "image" ? "📷 Image" : data.content,
                 data.sender
               );
             }
             currentTranslate = 0;
-          });
+          };
+
+          // Touch Events
+          div.addEventListener(
+            "touchstart",
+            (e) => startDrag(e.touches[0].clientX),
+            { passive: true }
+          );
+          div.addEventListener(
+            "touchmove",
+            (e) => moveDrag(e.touches[0].clientX, e),
+            { passive: false }
+          ); // passive:false allows preventing default
+          div.addEventListener("touchend", endDrag);
+
+          // Mouse Events
+          div.addEventListener("mousedown", (e) => startDrag(e.clientX));
+          div.addEventListener("mousemove", (e) => moveDrag(e.clientX, e));
+          div.addEventListener("mouseup", endDrag);
+          div.addEventListener("mouseleave", endDrag);
           // ---------------------------
 
           let replyBlock = "";
