@@ -181,6 +181,19 @@
         border-bottom-left-radius: 4px;
       }
 
+      /* --- Link Styling (New) --- */
+      .message a {
+        text-decoration: underline;
+        word-break: break-all; /* Prevents long URLs from breaking layout */
+        cursor: pointer;
+      }
+      .sent .message a {
+        color: white;
+      }
+      .received .message a {
+        color: #e0f1ff;
+      }
+
       .sender-tag {
         font-size: 11px;
         font-weight: 600;
@@ -270,17 +283,14 @@
       }
 
       .heart-path {
-        fill: #ff3b30; /* Nice Red Color */
+        fill: #ff3b30;
         stroke: none;
         transform-origin: center;
       }
 
-      /* Animate the Left Half */
       .left-half {
         animation: crackLeftSVG 0.9s forwards cubic-bezier(0.1, 0.7, 1, 0.1);
       }
-
-      /* Animate the Right Half */
       .right-half {
         animation: crackRightSVG 0.9s forwards cubic-bezier(0.1, 0.7, 1, 0.1);
       }
@@ -292,11 +302,11 @@
         }
         20% {
           transform: translate(-4px, -4px) rotate(-5deg);
-        } /* Initial break */
+        }
         100% {
           transform: translate(-30px, 60px) rotate(-45deg);
           opacity: 0;
-        } /* Fall */
+        }
       }
 
       @keyframes crackRightSVG {
@@ -306,11 +316,11 @@
         }
         20% {
           transform: translate(4px, -4px) rotate(5deg);
-        } /* Initial break */
+        }
         100% {
           transform: translate(30px, 60px) rotate(45deg);
           opacity: 0;
-        } /* Fall */
+        }
       }
 
       /* --- Reply Styling --- */
@@ -622,6 +632,27 @@
           });
         }
 
+        // --- NEW: URL Linkify Function ---
+        function linkify(text) {
+          if (!text) return "";
+          // 1. Detect URLs starting with http://, https://, or ftp://
+          const urlPattern =
+            /(\b(https?|ftp):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/gim;
+          let result = text.replace(
+            urlPattern,
+            '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
+          );
+
+          // 2. Detect URLs starting with "www." (without // before it)
+          const pseudoUrlPattern = /(^|[^\/])(www\.[\S]+(\b|$))/gim;
+          result = result.replace(
+            pseudoUrlPattern,
+            '$1<a href="http://$2" target="_blank" rel="noopener noreferrer">$2</a>'
+          );
+
+          return result;
+        }
+
         async function updateMySeenStatus() {
           try {
             await _supabase
@@ -714,26 +745,12 @@
               // --- BROKEN HEART SVG ANIMATION ---
               const container = document.createElement("div");
               container.className = "break-container";
-
-              // We use SVG to draw interlocking halves
               container.innerHTML = `
                    <svg viewBox="0 0 24 24" width="80" height="80">
-                      <path class="heart-path left-half" 
-                            d="M12 21.35 
-                               l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 
-                               C2 5.42 4.42 3 7.5 3 
-                               c1.74 0 3.41.81 4.5 2.09 
-                               L 12 5 L 11 9 L 13 13 L 11 17 L 12 21.35 Z" />
-                      
-                      <path class="heart-path right-half" 
-                            d="M12 21.35 
-                               L 11 17 L 13 13 L 11 9 L 12 5
-                               C 13.09 3.81 14.76 3 16.5 3 
-                               C 19.58 3 22 5.42 22 8.5 
-                               c 0 3.78 -3.4 6.86 -8.55 11.54 L 12 21.35 Z" />
+                      <path class="heart-path left-half" d="M12 21.35 l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 C2 5.42 4.42 3 7.5 3 c1.74 0 3.41.81 4.5 2.09 L 12 5 L 11 9 L 13 13 L 11 17 L 12 21.35 Z" />
+                      <path class="heart-path right-half" d="M12 21.35 L 11 17 L 13 13 L 11 9 L 12 5 C 13.09 3.81 14.76 3 16.5 3 C 19.58 3 22 5.42 22 8.5 c 0 3.78 -3.4 6.86 -8.55 11.54 L 12 21.35 Z" />
                    </svg>
                  `;
-
               div.appendChild(container);
               setTimeout(() => container.remove(), 1000);
             } else {
@@ -761,7 +778,7 @@
             lastTap = currentTime;
           });
 
-          // --- MOUSE & TOUCH SWIPE LOGIC ---
+          // --- SWIPE TO REPLY ---
           let startX = 0;
           let currentTranslate = 0;
           let isDragging = false;
@@ -821,10 +838,11 @@
             replyBlock = `<div class="reply-quote-block"><span class="reply-sender">${rSender}</span><span class="reply-text">${data.reply_to.text}</span></div>`;
           }
 
+          // Use linkify() on content
           let contentHtml =
             data.message_type === "image"
               ? `<img src="${data.image_url}" class="chat-image" loading="lazy" />`
-              : `<div>${data.content}</div>`;
+              : `<div>${linkify(data.content)}</div>`;
 
           let nameLabel = !isMe
             ? `<span class="sender-tag">${data.sender}</span>`
