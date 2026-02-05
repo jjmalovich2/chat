@@ -158,14 +158,17 @@
         line-height: 1.5;
         word-wrap: break-word;
         position: relative;
-        cursor: pointer;
-        user-select: none; /* Prevents highlighting on double click */
+        cursor: grab;
+        user-select: none; /* Prevents text highlight on double click/drag */
         touch-action: pan-y;
         transform: translateX(0);
         will-change: transform;
         display: flex;
         flex-direction: column;
         z-index: 2;
+      }
+      .message:active {
+        cursor: grabbing;
       }
 
       .sent .message {
@@ -193,7 +196,7 @@
         border-radius: 12px;
         margin-top: 5px;
         display: block;
-        pointer-events: none; /* Let clicks pass to message div */
+        pointer-events: none;
       }
 
       /* --- Heart Like Styling --- */
@@ -216,7 +219,6 @@
       .heart-badge.visible {
         transform: scale(1);
       }
-      /* If I sent it, heart goes to left. If received, heart goes to right. */
       .sent .heart-badge {
         left: -8px;
       }
@@ -602,14 +604,15 @@
         window.addEventListener("click", updateMySeenStatus);
 
         function renderMessage(data) {
-          // If message exists, we might need to update it (e.g. for likes)
-          const existingRow = document.getElementById(`msg-${data.id}`);
-          if (existingRow) {
-            // Just update the like status
-            updateLikeVisuals(
-              existingRow.querySelector(".message"),
-              data.liked_by || []
-            );
+          const msgId = data.id;
+          let rowDiv = document.getElementById(`msg-${msgId}`);
+          let div;
+
+          // If message exists, just update data
+          if (rowDiv) {
+            div = rowDiv.querySelector(".message");
+            div.savedLikes = data.liked_by || []; // Update local store
+            updateLikeVisuals(div, div.savedLikes);
             return;
           }
 
@@ -635,19 +638,22 @@
             updateMySeenStatus();
           }
 
-          const rowDiv = document.createElement("div");
+          rowDiv = document.createElement("div");
           rowDiv.className = `message-row ${isMe ? "sent" : "received"}`;
-          if (data.id) rowDiv.id = `msg-${data.id}`;
+          rowDiv.id = `msg-${msgId}`;
 
-          const div = document.createElement("div");
+          div = document.createElement("div");
           div.className = "message";
+
+          // Save likes to element for toggle logic
+          div.savedLikes = data.liked_by || [];
 
           // --- DOUBLE CLICK / TAP LIKE LOGIC ---
           let lastTap = 0;
           const handleLikeToggle = () => {
-            toggleLike(data.id, data.liked_by || []);
+            toggleLike(msgId, div.savedLikes);
 
-            // Play Pop Animation
+            // Pop Animation
             const pop = document.createElement("div");
             pop.className = "big-heart-pop animate-pop";
             pop.innerText = "❤️";
@@ -669,9 +675,8 @@
             }
             lastTap = currentTime;
           });
-          // -------------------------------------
 
-          // --- SWIPE LOGIC ---
+          // --- MOUSE & TOUCH SWIPE LOGIC ---
           let startX = 0;
           let currentTranslate = 0;
           let isDragging = false;
@@ -707,6 +712,7 @@
             currentTranslate = 0;
           };
 
+          // Touch
           div.addEventListener(
             "touchstart",
             (e) => startDrag(e.touches[0].clientX),
@@ -718,11 +724,12 @@
             { passive: false }
           );
           div.addEventListener("touchend", endDrag);
+
+          // Mouse
           div.addEventListener("mousedown", (e) => startDrag(e.clientX));
           div.addEventListener("mousemove", (e) => moveDrag(e.clientX, e));
           div.addEventListener("mouseup", endDrag);
           div.addEventListener("mouseleave", endDrag);
-          // ---------------------------
 
           let replyBlock = "";
           if (data.reply_to) {
@@ -740,7 +747,6 @@
             ? `<span class="sender-tag">${data.sender}</span>`
             : "";
 
-          // Heart Badge
           const heartBadge = document.createElement("div");
           heartBadge.className = "heart-badge";
           heartBadge.innerText = "❤️";
@@ -748,7 +754,7 @@
           div.innerHTML = `${nameLabel} ${replyBlock} ${contentHtml}`;
           div.appendChild(heartBadge);
 
-          updateLikeVisuals(div, data.liked_by || []);
+          updateLikeVisuals(div, div.savedLikes);
 
           rowDiv.appendChild(div);
           msgDiv.insertBefore(rowDiv, seenIndicator);
@@ -765,20 +771,14 @@
         }
 
         async function toggleLike(msgId, currentLikedBy) {
-          // Check if I already liked it
           const alreadyLiked = currentLikedBy.includes(myName);
           let newLikedBy;
 
           if (alreadyLiked) {
-            // Remove like
             newLikedBy = currentLikedBy.filter((name) => name !== myName);
           } else {
-            // Add like
             newLikedBy = [...currentLikedBy, myName];
           }
-
-          // Optimistic Update (Visuals update immediately via Realtime subscription anyway,
-          // but we could force it here if we wanted. Relying on subscription is safer for consistency)
 
           const { error } = await _supabase
             .from("messages")
@@ -976,7 +976,7 @@
             "postgres_changes",
             { event: "UPDATE", schema: "public", table: "messages" },
             (payload) => {
-              // Handle Like Updates Realtime
+              // Update likes in realtime
               renderMessage(payload.new);
             }
           )
