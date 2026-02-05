@@ -68,13 +68,16 @@
       #activeList::-webkit-scrollbar {
         display: none;
       }
+
       .user-status {
         display: flex;
         flex-direction: column;
         align-items: center;
         position: relative;
         min-width: 60px;
+        transition: opacity 0.5s ease;
       }
+
       .avatar-circle {
         width: 48px;
         height: 48px;
@@ -89,6 +92,7 @@
           #cc2366 75%,
           #bc1888 100%
         );
+        position: relative;
       }
       .avatar-inner {
         width: 100%;
@@ -110,6 +114,7 @@
         position: absolute;
         bottom: 22px;
         right: 8px;
+        z-index: 2;
       }
       .username-label {
         font-size: 11px;
@@ -117,6 +122,43 @@
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+      }
+
+      /* --- IDLE / AWAY STYLING --- */
+      .user-status.idle {
+        opacity: 0.5; /* Greyed out */
+      }
+      .user-status.idle .status-dot {
+        background-color: #ffcc00; /* Yellow dot for away/idle */
+      }
+      /* The ZZZ Emoji Overlay */
+      .zzz-overlay {
+        position: absolute;
+        top: -5px;
+        right: 0px;
+        font-size: 20px;
+        animation: floatZ 2s infinite ease-in-out;
+        display: none;
+        z-index: 10;
+        text-shadow: 1px 1px 2px black;
+      }
+      .user-status.idle .zzz-overlay {
+        display: block;
+      }
+
+      @keyframes floatZ {
+        0% {
+          transform: translate(0, 0) scale(0.8);
+          opacity: 0.7;
+        }
+        50% {
+          transform: translate(2px, -3px) scale(1.1);
+          opacity: 1;
+        }
+        100% {
+          transform: translate(0, 0) scale(0.8);
+          opacity: 0.7;
+        }
       }
 
       /* --- Messages Area --- */
@@ -195,18 +237,14 @@
       }
 
       /* --- NEW SCREAM LOGIC --- */
-
-      /* Base class for text that might scream */
       .text-content {
         display: inline-block;
-        /* Smooth transition for size changes (Grow/Shrink) */
         transition: font-size 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         transform-origin: left center;
       }
 
-      /* The Scream State */
       .scream {
-        font-size: 2.2em; /* Much Bigger */
+        font-size: 2.2em;
         font-weight: 800;
         animation: shakeScream 0.8s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
       }
@@ -642,6 +680,9 @@
       let lastSentMessageTime = null;
       let myName = "";
 
+      // Store all user last_seen timestamps here
+      let userTimestamps = {};
+
       window.addEventListener("DOMContentLoaded", () => {
         myName = localStorage.getItem("chat-user");
         if (!myName) {
@@ -706,33 +747,91 @@
           } catch (e) {}
         }
 
-        async function checkSeenStatus() {
-          if (!lastSentMessageTime) {
-            seenIndicator.style.display = "none";
-            return;
-          }
+        async function checkStatusLoop() {
+          // 1. Fetch timestamps for idle checking + 'Seen' text
           const { data: users } = await _supabase
             .from("user_presence")
             .select("*");
-          if (!users) return;
+          if (users) {
+            // Update local cache
+            users.forEach((u) => {
+              userTimestamps[u.username] = new Date(u.last_seen);
+            });
 
-          const otherUser = users.find((u) => u.username !== myName);
-          if (otherUser) {
-            const seenTime = new Date(otherUser.last_seen);
-            const msgTime = new Date(lastSentMessageTime);
-            if (seenTime > msgTime) {
-              seenIndicator.style.display = "block";
-              const diffMins = Math.floor((new Date() - seenTime) / 60000);
-              seenIndicator.innerText =
-                diffMins < 2 ? "Seen" : `Seen ${diffMins}m`;
-            } else {
-              seenIndicator.style.display = "none";
+            // Update 'Seen' text indicator logic
+            if (lastSentMessageTime) {
+              const otherUser = users.find((u) => u.username !== myName);
+              if (otherUser) {
+                const seenTime = new Date(otherUser.last_seen);
+                const msgTime = new Date(lastSentMessageTime);
+                if (seenTime > msgTime) {
+                  seenIndicator.style.display = "block";
+                  const diffMins = Math.floor((new Date() - seenTime) / 60000);
+                  seenIndicator.innerText =
+                    diffMins < 2 ? "Seen" : `Seen ${diffMins}m`;
+                } else {
+                  seenIndicator.style.display = "none";
+                }
+              }
             }
           }
+
+          // 2. Re-render the active list to apply "idle" classes based on time
+          renderActiveList();
         }
-        setInterval(checkSeenStatus, 10000);
+
+        // Run check loop often (every 5 seconds) to catch idle status updates
+        setInterval(checkStatusLoop, 5000);
+
         msgInput.addEventListener("focus", updateMySeenStatus);
         window.addEventListener("click", updateMySeenStatus);
+
+        // --- NEW RENDER ACTIVE LIST LOGIC ---
+        function renderActiveList() {
+          const state = presenceChannel.presenceState();
+          const onlineUsers = Object.keys(state);
+
+          // Get unique list of users (either online OR in our timestamp DB)
+          // We prioritize "online" users, but map their status to the timestamps
+          if (onlineUsers.length === 0) {
+            activeListDiv.innerHTML = "";
+            return;
+          }
+
+          const now = new Date();
+
+          activeListDiv.innerHTML = onlineUsers
+            .map((name) => {
+              const initial = name.charAt(0).toUpperCase();
+
+              // CHECK IDLE STATUS
+              // If last seen was > 3 minutes ago
+              let isIdle = false;
+              if (userTimestamps[name]) {
+                const diffMs = now - userTimestamps[name];
+                const diffMins = diffMs / 1000 / 60;
+                if (diffMins > 3) {
+                  isIdle = true;
+                }
+              }
+
+              // Apply classes based on idle status
+              const idleClass = isIdle ? "idle" : "";
+
+              return `
+                 <div class="user-status ${idleClass}">
+                    <div class="avatar-circle">
+                        <div class="avatar-inner">${initial}</div>
+                    </div>
+                    <div class="zzz-overlay">💤</div>
+                    <span class="status-dot"></span>
+                    <span class="username-label">${
+                      name === myName ? "You" : name
+                    }</span>
+                 </div>`;
+            })
+            .join("");
+        }
 
         function renderMessage(data) {
           const msgId = data.id;
@@ -897,12 +996,9 @@
           if (isScreaming) {
             const textDiv = div.querySelector(".text-content");
             if (textDiv) {
-              // Add class after a tiny delay so the transition (grow) triggers
               setTimeout(() => {
                 textDiv.classList.add("scream");
               }, 10);
-
-              // When animation ends, remove class to trigger transition (shrink)
               textDiv.onanimationend = () => {
                 textDiv.classList.remove("scream");
               };
@@ -1055,7 +1151,7 @@
             });
             lastMessageTime = null;
             data.forEach(renderMessage);
-            checkSeenStatus();
+            checkStatusLoop(); // Run once immediately
             updateMySeenStatus();
           }
         }
@@ -1091,16 +1187,7 @@
         });
         presenceChannel
           .on("presence", { event: "sync" }, () => {
-            const state = presenceChannel.presenceState();
-            const users = Object.keys(state);
-            activeListDiv.innerHTML = users
-              .map((name) => {
-                const initial = name.charAt(0).toUpperCase();
-                return `<div class="user-status"><div class="avatar-circle"><div class="avatar-inner">${initial}</div></div><span class="status-dot"></span><span class="username-label">${
-                  name === myName ? "You" : name
-                }</span></div>`;
-              })
-              .join("");
+            renderActiveList(); // Update UI when presence changes
           })
           .subscribe(async (status) => {
             if (status === "SUBSCRIBED")
@@ -1132,8 +1219,8 @@
           .on(
             "postgres_changes",
             { event: "*", schema: "public", table: "user_presence" },
-            () => checkSeenStatus()
-          )
+            () => checkStatusLoop()
+          ) // If status table changes, update UI
           .on("broadcast", { event: "typing" }, (payload) => {
             if (payload.payload.sender !== myName) {
               if (payload.payload.isTyping) {
