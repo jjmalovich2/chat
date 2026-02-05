@@ -181,10 +181,10 @@
         border-bottom-left-radius: 4px;
       }
 
-      /* --- Link Styling (New) --- */
+      /* --- Link Styling --- */
       .message a {
         text-decoration: underline;
-        word-break: break-all; /* Prevents long URLs from breaking layout */
+        word-break: break-all;
         cursor: pointer;
       }
       .sent .message a {
@@ -192,6 +192,51 @@
       }
       .received .message a {
         color: #e0f1ff;
+      }
+
+      /* --- SCREAM EFFECT (ALL CAPS) --- */
+      @keyframes shakeScream {
+        0% {
+          transform: translate(1px, 1px) rotate(0deg);
+        }
+        10% {
+          transform: translate(-1px, -2px) rotate(-1deg);
+        }
+        20% {
+          transform: translate(-3px, 0px) rotate(1deg);
+        }
+        30% {
+          transform: translate(3px, 2px) rotate(0deg);
+        }
+        40% {
+          transform: translate(1px, -1px) rotate(1deg);
+        }
+        50% {
+          transform: translate(-1px, 2px) rotate(-1deg);
+        }
+        60% {
+          transform: translate(-3px, 1px) rotate(0deg);
+        }
+        70% {
+          transform: translate(3px, 1px) rotate(-1deg);
+        }
+        80% {
+          transform: translate(-1px, -1px) rotate(1deg);
+        }
+        90% {
+          transform: translate(1px, 2px) rotate(0deg);
+        }
+        100% {
+          transform: translate(1px, -2px) rotate(-1deg);
+        }
+      }
+
+      .scream {
+        font-size: 1.3em;
+        font-weight: 800;
+        display: inline-block;
+        animation: shakeScream 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+        transform-origin: center;
       }
 
       .sender-tag {
@@ -632,24 +677,19 @@
           });
         }
 
-        // --- NEW: URL Linkify Function ---
         function linkify(text) {
           if (!text) return "";
-          // 1. Detect URLs starting with http://, https://, or ftp://
           const urlPattern =
             /(\b(https?|ftp):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/gim;
           let result = text.replace(
             urlPattern,
             '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
           );
-
-          // 2. Detect URLs starting with "www." (without // before it)
           const pseudoUrlPattern = /(^|[^\/])(www\.[\S]+(\b|$))/gim;
           result = result.replace(
             pseudoUrlPattern,
             '$1<a href="http://$2" target="_blank" rel="noopener noreferrer">$2</a>'
           );
-
           return result;
         }
 
@@ -742,7 +782,6 @@
             toggleLike(msgId, div.savedLikes);
 
             if (isUnliking) {
-              // --- BROKEN HEART SVG ANIMATION ---
               const container = document.createElement("div");
               container.className = "break-container";
               container.innerHTML = `
@@ -754,7 +793,6 @@
               div.appendChild(container);
               setTimeout(() => container.remove(), 1000);
             } else {
-              // --- NORMAL HEART POP ---
               const pop = document.createElement("div");
               pop.className = "big-heart-pop animate-pop";
               pop.innerText = "❤️";
@@ -838,11 +876,19 @@
             replyBlock = `<div class="reply-quote-block"><span class="reply-sender">${rSender}</span><span class="reply-text">${data.reply_to.text}</span></div>`;
           }
 
-          // Use linkify() on content
-          let contentHtml =
-            data.message_type === "image"
-              ? `<img src="${data.image_url}" class="chat-image" loading="lazy" />`
-              : `<div>${linkify(data.content)}</div>`;
+          let contentHtml = "";
+          if (data.message_type === "image") {
+            contentHtml = `<img src="${data.image_url}" class="chat-image" loading="lazy" />`;
+          } else {
+            // --- SCREAM DETECTION ---
+            const text = data.content || "";
+            // Must contain at least one letter, and must match its uppercase version
+            const isScreaming =
+              /[a-zA-Z]/.test(text) && text === text.toUpperCase();
+
+            const finalClass = isScreaming ? "scream" : "";
+            contentHtml = `<div class="${finalClass}">${linkify(text)}</div>`;
+          }
 
           let nameLabel = !isMe
             ? `<span class="sender-tag">${data.sender}</span>`
