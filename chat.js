@@ -39,7 +39,6 @@ el.color.addEventListener("change", (e) => {
 });
 
 // --- MESSAGING ---
-
 async function sendMessage(content, type = 'text') {
     const payload = {
         sender: myName,
@@ -49,12 +48,13 @@ async function sendMessage(content, type = 'text') {
     };
     await _supabase.from("messages").insert([payload]);
     if (type === 'text') el.input.value = "";
+    resetIdleTimer(); // Typing keeps you active
 }
 
 el.send.onclick = () => { if(el.input.value.trim()) sendMessage(el.input.value.trim()); };
 el.input.onkeydown = (e) => { if(e.key==="Enter" && el.input.value.trim()) sendMessage(el.input.value.trim()); };
 
-// --- UPLOADS (chat-images) ---
+// --- UPLOADS ---
 async function uploadFile(file) {
     if(!file) return;
     const fileName = `${Date.now()}_${file.name.replace(/\s/g,'_')}`;
@@ -71,7 +71,6 @@ el.cam.onchange = (e) => uploadFile(e.target.files[0]);
 
 // --- POOL GAME ---
 let poolGame = null;
-
 function initPool() {
     if (!poolGame) {
         poolGame = new PoolGame('poolCanvas', (turnData) => {
@@ -92,6 +91,7 @@ el.btnGame.onclick = () => {
     el.statusTitle.innerText = "New Game";
     el.statusSub.innerText = "Break the rack!";
     poolGame.setupNewGame();
+    resetIdleTimer();
 };
 
 el.closeGame.onclick = () => { el.modal.style.display = 'none'; };
@@ -110,7 +110,7 @@ function openGameFromChat(gameData, isMyTurn) {
     }
 }
 
-// --- RENDER ---
+// --- RENDER MESSAGES ---
 function renderMessage(msg) {
     const isMe = msg.sender === myName;
     const row = document.createElement("div");
@@ -118,33 +118,26 @@ function renderMessage(msg) {
     
     const bubble = document.createElement("div");
     
-    // 1. POOL GAME
     if(msg.message_type === 'game_pool') {
         bubble.className = "message game-bubble";
         bubble.innerHTML = `<span class="game-icon">🎱</span><span class="game-text">${isMe?"Played":"Your Turn"}</span>`;
         bubble.onclick = () => openGameFromChat(JSON.parse(msg.content), !isMe);
     } 
-    // 2. IMAGES
     else if (msg.message_type === 'image') {
         bubble.className = "message";
         if(isMe && msg.user_color) bubble.style.backgroundColor = msg.user_color;
         bubble.innerHTML = `<img src="${msg.content}" onload="this.parentNode.parentNode.scrollIntoView()" />`;
     }
-    // 3. TEXT (w/ SCREAM CHECK)
     else {
         bubble.className = "message";
         if(isMe) bubble.style.backgroundColor = msg.user_color || "#3797f0";
         else bubble.style.backgroundColor = "#262626";
 
-        bubble.innerHTML = msg.content; // Use innerHTML for old messages
+        bubble.innerHTML = msg.content; 
         
-        // CHECK FOR SCREAM (All Caps & Length > 1)
-        // e.g. "HELLO" or "OMG"
-        if (msg.content && msg.content.length > 1 && msg.content === msg.content.toUpperCase()) {
-            // Check if it actually contains letters (not just "???")
-            if (/[A-Z]/.test(msg.content)) {
-                bubble.classList.add('scream');
-            }
+        // SCREAM CHECK
+        if (msg.content && msg.content.length > 1 && msg.content === msg.content.toUpperCase() && /[A-Z]/.test(msg.content)) {
+            bubble.classList.add('scream');
         }
     }
     
@@ -153,20 +146,79 @@ function renderMessage(msg) {
     el.msgs.scrollTop = el.msgs.scrollHeight;
 }
 
-// --- SYNC ---
+// --- IDLE & PRESENCE SYSTEM ---
 const channel = _supabase.channel('room1');
+let idleTimeout;
+let myStatus = 'online'; // 'online' or 'idle'
+
+// 1. Function to broadcast status
+async function updateStatus(status) {
+    myStatus = status;
+    await channel.track({ 
+        user: myName, 
+        status: status,
+        online_at: new Date().toISOString() 
+    });
+}
+
+// 2. Idle Timer Logic (5 Mins)
+function resetIdleTimer() {
+    clearTimeout(idleTimeout);
+    
+    // If we were idle, wake up!
+    if (myStatus === 'idle') {
+        updateStatus('online');
+    }
+
+    // Set timer for 5 minutes (300,000 ms)
+    idleTimeout = setTimeout(() => {
+        updateStatus('idle');
+    }, 5 * 60 * 1000); 
+}
+
+// 3. Presence Updates (Showing names)
 channel
     .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState();
         const users = Object.values(state).flat();
-        const others = users.filter(u => u.user !== myName);
-        el.activeInd.style.display = others.length > 0 ? 'flex' : 'none';
+        
+        // Remove duplicates (if user has multiple tabs open, take the latest one)
+        const uniqueUsers = {};
+        users.forEach(u => {
+            // Overwrite if newer or if we haven't seen them
+            uniqueUsers[u.user] = u; 
+        });
+
+        // Build HTML for header
+        el.activeInd.innerHTML = "";
+        
+        Object.values(uniqueUsers).forEach(u => {
+            const isIdle = u.status === 'idle';
+            const span = document.createElement('span');
+            span.className = 'user-tag';
+            
+            // Dot color based on status
+            const dotClass = isIdle ? 'dot-idle' : 'dot-online';
+            const text = isIdle ? `${u.user} (Idle)` : u.user;
+            
+            span.innerHTML = `<div class="${dotClass}"></div> ${text}`;
+            el.activeInd.appendChild(span);
+        });
     })
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, p => renderMessage(p.new))
     .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') await channel.track({ user: myName, online_at: new Date().toISOString() });
+        if (status === 'SUBSCRIBED') {
+            updateStatus('online');
+            resetIdleTimer();
+        }
     });
 
+// 4. Attach Listeners for Activity
+['mousemove', 'keydown', 'touchstart', 'click'].forEach(evt => {
+    window.addEventListener(evt, resetIdleTimer);
+});
+
+// Load History
 async function fetchHistory() {
     const { data } = await _supabase.from("messages").select("*").order("created_at", {ascending:true});
     if(data) { el.msgs.innerHTML=""; data.forEach(renderMessage); }
