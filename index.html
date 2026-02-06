@@ -11,51 +11,36 @@
         
         /* HEADER (Compact Insta Style) */
         header { 
-            /* Reduced padding to save space */
-            padding: 5px 0; 
-            border-bottom: 1px solid #262626; background: #000; z-index: 10; 
+            padding: 5px 0; border-bottom: 1px solid #262626; background: #000; z-index: 10; 
             display: flex; flex-direction: column; align-items: center;
         }
-        .header-title { 
-            font-weight: 700; font-size: 15px; letter-spacing: -0.5px; 
-            margin-bottom: 5px; /* Tighter gap */
-        }
+        .header-title { font-weight: 700; font-size: 15px; letter-spacing: -0.5px; margin-bottom: 5px; }
         
         /* STORIES CONTAINER */
         .active-status { 
-            display: flex; gap: 10px; /* Tighter gap between users */
-            overflow-x: auto; width: 100%; padding: 0 10px; box-sizing: border-box; 
-            scrollbar-width: none; 
-            height: 65px; /* Fixed small height */
-            align-items: center;
+            display: flex; gap: 10px; overflow-x: auto; width: 100%; padding: 0 10px; box-sizing: border-box; 
+            scrollbar-width: none; height: 65px; align-items: center;
         }
         .active-status::-webkit-scrollbar { display: none; }
-
         .story-item { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 50px; cursor: pointer; }
         
-        /* SMALLER RINGS (40px) */
         .story-ring { 
             width: 40px; height: 40px; border-radius: 50%; padding: 2px; 
             background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); 
             position: relative; display: flex; justify-content: center; align-items: center;
         }
-        
         .story-avatar { 
             width: 100%; height: 100%; border-radius: 50%; border: 2px solid #000; 
             display: flex; align-items: center; justify-content: center; 
-            font-size: 16px; /* Smaller initials */
-            font-weight: 700; text-transform: uppercase; color: white;
+            font-size: 16px; font-weight: 700; text-transform: uppercase; color: white;
             text-shadow: 0 1px 2px rgba(0,0,0,0.3);
         }
-
         .story-status { 
-            position: absolute; bottom: 0; right: 0; 
-            width: 11px; height: 11px; /* Smaller status dot */
+            position: absolute; bottom: 0; right: 0; width: 11px; height: 11px; 
             border-radius: 50%; border: 2px solid #000; 
         }
         .status-online { background: #1ed760; }
         .status-idle { background: #f1c40f; }
-
         .story-name { font-size: 10px; color: #ccc; text-align: center; max-width: 55px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         /* MESSAGES */
@@ -71,11 +56,7 @@
         
         /* SCREAM ANIMATION */
         .scream {
-            font-weight: 900 !important; 
-            letter-spacing: 1px;
-            animation: scream-pop 0.6s ease-out;
-            z-index: 100;
-            position: relative;
+            font-weight: 900 !important; letter-spacing: 1px; animation: scream-pop 0.6s ease-out; z-index: 100; position: relative;
         }
         .sent .scream { transform-origin: right center; }     
         .received .scream { transform-origin: left center; }
@@ -89,10 +70,8 @@
             100% { transform: scale(1); }   
         }
 
-        /* IMAGES */
         .message img { max-width: 100%; border-radius: 12px; margin-top: 5px; display: block; }
-
-        /* GAME BUBBLE */
+        
         .game-bubble { background: #1c1c1c !important; border: 1px solid #333; cursor: pointer; text-align: center; min-width: 160px; }
         .game-icon { font-size: 30px; display: block; margin: 5px 0; }
         .game-text { font-size: 11px; font-weight: 700; color: #3797f0; text-transform: uppercase; letter-spacing: 1px; }
@@ -101,24 +80,41 @@
         .input-area { padding: 10px; border-top: 1px solid #262626; display: flex; align-items: center; gap: 8px; background: #000; }
         .icon-btn { background: none; border: none; font-size: 22px; cursor: pointer; padding: 5px; transition: transform 0.1s; }
         .icon-btn:active { transform: scale(0.9); }
-        
         .color-wrap { position: relative; width: 24px; height: 24px; border-radius: 50%; overflow: hidden; border: 2px solid #444; }
         #colorInput { position: absolute; top: -5px; left: -5px; width: 40px; height: 40px; cursor: pointer; border: none; padding: 0; }
-
         #msgInput { flex: 1; padding: 10px 15px; border-radius: 20px; border: 1px solid #333; background: #121212; color: white; outline: none; font-size: 15px; }
         #sendBtn { color: #3797f0; background: none; border: none; font-weight: 600; cursor: pointer; padding: 0 5px; }
 
-        /* GAME MODAL */
-        #gameModal {
+        /* MODALS (Game & Camera) */
+        .full-modal {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.95); z-index: 1000;
             display: none; flex-direction: column; align-items: center; justify-content: center;
         }
+
+        /* POOL GAME SPECIFIC */
         #gameInfo { position: absolute; top: 20px; text-align: center; width: 100%; pointer-events: none; }
         #statusTitle { font-size: 24px; font-weight: 800; display: block; text-shadow: 0 2px 10px black; }
         #statusSub { font-size: 14px; color: #ddd; text-shadow: 0 2px 5px black; }
         #poolCanvas { background: #2e7d32; border: 15px solid #3e2723; border-radius: 12px; box-shadow: 0 20px 50px rgba(0,0,0,0.9); max-width: 95vw; max-height: 80vh; }
         #closeGameBtn { position: absolute; bottom: 30px; padding: 10px 25px; background: #333; color: white; border: none; border-radius: 30px; cursor: pointer; font-weight: 600; }
+
+        /* CAMERA INTERFACE */
+        #cameraView { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); /* Mirror for selfie */ }
+        #cameraControls { position: absolute; bottom: 40px; width: 100%; display: flex; justify-content: center; align-items: center; gap: 40px; }
+        
+        #shutterBtn { 
+            width: 70px; height: 70px; border-radius: 50%; 
+            background: white; border: 4px solid rgba(255,255,255,0.3); 
+            cursor: pointer; transition: transform 0.1s;
+        }
+        #shutterBtn:active { transform: scale(0.9); background: #eee; }
+        
+        #closeCamBtn {
+            font-size: 18px; color: white; background: rgba(0,0,0,0.5); 
+            width: 40px; height: 40px; border-radius: 50%; border: none; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+        }
     </style>
 </head>
 <body>
@@ -131,10 +127,9 @@
 
     <div class="input-area">
         <input type="file" id="fileInput" hidden accept="image/*">
-        <input type="file" id="camInput" hidden accept="image/*" capture="environment">
-
+        
         <button id="camBtn" class="icon-btn">📷</button>
-        <button id="imgBtn" class="icon-btn">🖼️</button>
+        <button id="imgBtn" class="icon-btn">📎</button>
         <button id="newGameBtn" class="icon-btn">🎱</button>
         
         <div class="color-wrap">
@@ -145,13 +140,22 @@
         <button id="sendBtn">Send</button>
     </div>
 
-    <div id="gameModal">
+    <div id="gameModal" class="full-modal">
         <div id="gameInfo">
             <span id="statusTitle">Your Turn</span>
             <span id="statusSub">Make your shot</span>
         </div>
         <canvas id="poolCanvas"></canvas>
         <button id="closeGameBtn">Close Game</button>
+    </div>
+
+    <div id="cameraModal" class="full-modal" style="background: black;">
+        <video id="cameraView" autoplay playsinline></video>
+        <div id="cameraControls">
+            <button id="closeCamBtn">✕</button>
+            <button id="shutterBtn"></button>
+            <div style="width: 40px;"></div> 
+        </div>
     </div>
 
     <script type="module" src="pool.js"></script>
