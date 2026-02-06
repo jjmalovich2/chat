@@ -50,10 +50,37 @@
         .received { justify-content: flex-start; }
         
         /* BUBBLES */
-        .message { padding: 10px 15px; border-radius: 20px; max-width: 75%; font-size: 15px; position: relative; word-wrap: break-word; }
+        .message { padding: 10px 15px; border-radius: 20px; max-width: 75%; font-size: 15px; position: relative; word-wrap: break-word; user-select: none; /* Prevent text selection on double click */ }
         .sent .message { border-bottom-right-radius: 4px; }
         .received .message { border-bottom-left-radius: 4px; background: #262626; color: #fff; }
         
+        /* LIKE ANIMATIONS & BADGE */
+        .heart-pop {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0);
+            font-size: 40px; pointer-events: none; animation: pop-heart 0.8s ease-out; z-index: 10;
+        }
+        @keyframes pop-heart {
+            0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+            50% { transform: translate(-50%, -50%) scale(1.5); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
+        }
+
+        .liked-badge {
+            position: absolute; bottom: -8px; left: -4px; /* Default for received */
+            width: 22px; height: 22px;
+            background: #262626; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-size: 13px; border: 2px solid #000;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+            animation: badge-pop 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        /* For sent messages, put the heart on the left or right? Usually right for sent. */
+        .sent .liked-badge { left: auto; right: -4px; background: #000; } 
+        
+        @keyframes badge-pop {
+            from { transform: scale(0); }
+            to { transform: scale(1); }
+        }
+
         /* SCREAM ANIMATION */
         .scream {
             font-weight: 900 !important; letter-spacing: 1px; animation: scream-pop 0.6s ease-out; z-index: 100; position: relative;
@@ -85,14 +112,13 @@
         #msgInput { flex: 1; padding: 10px 15px; border-radius: 20px; border: 1px solid #333; background: #121212; color: white; outline: none; font-size: 15px; }
         #sendBtn { color: #3797f0; background: none; border: none; font-weight: 600; cursor: pointer; padding: 0 5px; }
 
-        /* MODALS (Game & Camera) */
+        /* MODALS */
         .full-modal {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.95); z-index: 1000;
             display: none; flex-direction: column; align-items: center; justify-content: center;
         }
 
-        /* POOL GAME SPECIFIC */
         #gameInfo { position: absolute; top: 20px; text-align: center; width: 100%; pointer-events: none; }
         #statusTitle { font-size: 24px; font-weight: 800; display: block; text-shadow: 0 2px 10px black; }
         #statusSub { font-size: 14px; color: #ddd; text-shadow: 0 2px 5px black; }
@@ -100,16 +126,14 @@
         #closeGameBtn { position: absolute; bottom: 30px; padding: 10px 25px; background: #333; color: white; border: none; border-radius: 30px; cursor: pointer; font-weight: 600; }
 
         /* CAMERA INTERFACE */
-        #cameraView { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); /* Mirror for selfie */ }
+        #cameraView { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
         #cameraControls { position: absolute; bottom: 40px; width: 100%; display: flex; justify-content: center; align-items: center; gap: 40px; }
-        
         #shutterBtn { 
             width: 70px; height: 70px; border-radius: 50%; 
             background: white; border: 4px solid rgba(255,255,255,0.3); 
             cursor: pointer; transition: transform 0.1s;
         }
         #shutterBtn:active { transform: scale(0.9); background: #eee; }
-        
         #closeCamBtn {
             font-size: 18px; color: white; background: rgba(0,0,0,0.5); 
             width: 40px; height: 40px; border-radius: 50%; border: none; cursor: pointer;
@@ -129,7 +153,7 @@
         <input type="file" id="fileInput" hidden accept="image/*">
         
         <button id="camBtn" class="icon-btn">📷</button>
-        <button id="imgBtn" class="icon-btn">📎</button>
+        <button id="imgBtn" class="icon-btn">🖼️</button>
         <button id="newGameBtn" class="icon-btn">🎱</button>
         
         <div class="color-wrap">
