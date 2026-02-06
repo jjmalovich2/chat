@@ -14,6 +14,9 @@ if (!myName) {
 }
 let myColor = localStorage.getItem("chat-color") || "#3797f0";
 
+// --- STATE ---
+let replyingTo = null; 
+
 // --- DOM ELEMENTS ---
 const el = {
     msgs: document.getElementById("messages"),
@@ -32,7 +35,11 @@ const el = {
     camView: document.getElementById("cameraView"),
     shutter: document.getElementById("shutterBtn"),
     closeCam: document.getElementById("closeCamBtn"),
-    activeInd: document.getElementById("activeIndicator")
+    activeInd: document.getElementById("activeIndicator"),
+    replyBar: document.getElementById("replyBar"),
+    replyUser: document.getElementById("replyUser"),
+    replyText: document.getElementById("replyText"),
+    closeReply: document.getElementById("closeReplyBtn")
 };
 
 el.color.value = myColor;
@@ -42,17 +49,42 @@ el.color.addEventListener("change", (e) => {
     updateStatus(myStatus);
 });
 
+// --- REPLY SYSTEM ---
+function setReply(msg) {
+    replyingTo = msg;
+    el.replyBar.style.display = "flex";
+    el.replyUser.innerText = `Replying to ${msg.sender}`;
+    if (msg.message_type === 'image') {
+        el.replyText.innerText = "🖼️ Photo";
+    } else if (msg.message_type === 'game_pool') {
+        el.replyText.innerText = "🎱 8-Ball Pool";
+    } else {
+        el.replyText.innerText = msg.content;
+    }
+    el.input.focus();
+}
+
+function clearReply() {
+    replyingTo = null;
+    el.replyBar.style.display = "none";
+}
+
+el.closeReply.onclick = clearReply;
+
 // --- MESSAGING ---
 async function sendMessage(content, type = 'text') {
+    let finalContent = content;
     const payload = {
         sender: myName,
-        content: content,
+        content: finalContent,
         message_type: type,
         user_color: myColor,
-        liked_by: [] 
+        liked_by: []
     };
+    
     await _supabase.from("messages").insert([payload]);
     if (type === 'text') el.input.value = "";
+    clearReply(); 
     resetIdleTimer();
 }
 
@@ -120,7 +152,6 @@ function initPool() {
     }
     poolGame.resize();
 }
-
 el.btnGame.onclick = () => {
     el.modal.style.display = 'flex';
     initPool();
@@ -151,13 +182,16 @@ function renderMessage(msg) {
     const row = document.createElement("div");
     row.className = `message-row ${isMe ? "sent" : "received"}`;
     
-    const likesList = msg.liked_by || [];
-    const isLikedByMe = likesList.includes(myName);
+    // REPLY ICON
+    const replyIcon = document.createElement("div");
+    replyIcon.className = "reply-icon-swiping";
+    replyIcon.innerHTML = "↩️"; 
+    row.appendChild(replyIcon);
 
     const bubble = document.createElement("div");
     bubble.dataset.id = msg.id;
-    bubble.dataset.liked = isLikedByMe ? "true" : "false";
-
+    
+    // --- CONTENT RENDERING ---
     if(msg.message_type === 'game_pool') {
         bubble.className = "message game-bubble";
         bubble.innerHTML = `<span class="game-icon">🎱</span><span class="game-text">${isMe?"Played":"Your Turn"}</span>`;
@@ -179,6 +213,11 @@ function renderMessage(msg) {
         }
     }
 
+    // --- LIKE BADGE ---
+    const likesList = msg.liked_by || [];
+    const isLikedByMe = likesList.includes(myName);
+    bubble.dataset.liked = isLikedByMe ? "true" : "false";
+
     if(isLikedByMe) {
         const badge = document.createElement('div');
         badge.className = 'liked-badge';
@@ -186,32 +225,20 @@ function renderMessage(msg) {
         bubble.appendChild(badge);
     }
 
-    // --- DOUBLE CLICK HANDLER ---
+    // --- DOUBLE CLICK LIKE ---
     bubble.addEventListener('dblclick', async (e) => {
-        e.stopPropagation();
-        e.preventDefault();
-        
-        const { data: currentMsg } = await _supabase
-            .from('messages')
-            .select('liked_by')
-            .eq('id', msg.id)
-            .single();
-
+        e.stopPropagation(); e.preventDefault();
+        const { data: currentMsg } = await _supabase.from('messages').select('liked_by').eq('id', msg.id).single();
         let currentLikes = currentMsg ? (currentMsg.liked_by || []) : [];
         const wasLiked = currentLikes.includes(myName);
-        
         let newLikes;
         if (wasLiked) {
-            // UNLIKE -> BREAKING ANIMATION
             newLikes = currentLikes.filter(name => name !== myName);
-            
             const oldBadge = bubble.querySelector('.liked-badge');
             if(oldBadge) oldBadge.remove();
-
-            // Insert SVG Heart that splits
+            
             const container = document.createElement('div');
             container.className = 'broken-heart-svg';
-            // Custom SVG paths that form a heart with a jagged crack in the middle
             container.innerHTML = `
                 <svg viewBox="0 0 32 32" width="100%" height="100%">
                     <path class="heart-shard left-shard" d="M16,6 L13,10 L16,15 L13,20 L16,29 C6,29 2,22 2,12 C2,6 7,2 12,2 C14.5,2 16,4 16,6 Z" />
@@ -220,33 +247,82 @@ function renderMessage(msg) {
             `;
             bubble.appendChild(container);
             setTimeout(() => container.remove(), 800);
-
             bubble.dataset.liked = "false";
-
         } else {
-            // LIKE -> FLYING ANIMATION
             newLikes = [...currentLikes, myName];
-            
             const oldBadge = bubble.querySelector('.liked-badge');
             if(oldBadge) oldBadge.remove();
-
             const heart = document.createElement('div');
             heart.className = 'heart-pop';
             heart.innerHTML = '❤️';
             bubble.appendChild(heart);
             setTimeout(() => heart.remove(), 800);
-
             const badge = document.createElement('div');
             badge.className = 'liked-badge';
             badge.innerHTML = '❤️';
             bubble.appendChild(badge);
-            
             bubble.dataset.liked = "true";
         }
-
         await _supabase.from("messages").update({ liked_by: newLikes }).eq("id", msg.id);
     });
-    
+
+    // --- SWIPE TO REPLY LOGIC (Updated for bidirectional) ---
+    let startX = 0;
+    let currentX = 0;
+    let isSwiping = false;
+
+    bubble.addEventListener('touchstart', (e) => {
+        startX = e.touches[0].clientX;
+        isSwiping = true;
+        bubble.style.transition = 'none'; 
+    }, {passive: true});
+
+    bubble.addEventListener('touchmove', (e) => {
+        if (!isSwiping) return;
+        currentX = e.touches[0].clientX;
+        const diff = currentX - startX;
+        const absDiff = Math.abs(diff);
+
+        // Logic:
+        // If it's MY message (isMe), only allow Negative Diff (Swipe Left)
+        // If it's THEIR message (!isMe), only allow Positive Diff (Swipe Right)
+        
+        if (isMe) {
+            // My message -> Swipe Left
+            if (diff < 0 && absDiff < 150) {
+                bubble.style.transform = `translateX(${diff}px)`;
+                replyIcon.style.opacity = Math.min(absDiff / 60, 1);
+                replyIcon.style.transform = `scale(${Math.min(absDiff / 60, 1.2)})`;
+            }
+        } else {
+            // Their message -> Swipe Right
+            if (diff > 0 && absDiff < 150) {
+                bubble.style.transform = `translateX(${diff}px)`;
+                replyIcon.style.opacity = Math.min(absDiff / 60, 1);
+                replyIcon.style.transform = `scale(${Math.min(absDiff / 60, 1.2)})`;
+            }
+        }
+    }, {passive: true});
+
+    bubble.addEventListener('touchend', (e) => {
+        if (!isSwiping) return;
+        isSwiping = false;
+        const diff = currentX - startX;
+        
+        bubble.style.transition = 'transform 0.2s ease-out';
+        bubble.style.transform = `translateX(0px)`;
+        
+        replyIcon.style.opacity = 0;
+
+        // Trigger if pulled far enough in correct direction
+        if (Math.abs(diff) > 70) { 
+            if ((isMe && diff < 0) || (!isMe && diff > 0)) {
+                if(navigator.vibrate) navigator.vibrate(10);
+                setReply(msg);
+            }
+        }
+    });
+
     row.appendChild(bubble);
     el.msgs.appendChild(row);
     el.msgs.scrollTop = el.msgs.scrollHeight;
@@ -256,16 +332,13 @@ function renderMessage(msg) {
 function updateMessageUI(updatedMsg) {
     const bubble = document.querySelector(`.message[data-id="${updatedMsg.id}"]`);
     if(!bubble) return;
-
     const likesList = updatedMsg.liked_by || [];
     const isLikedByMe = likesList.includes(myName);
-
     if (bubble.dataset.liked === "true" && !isLikedByMe) {
         const oldBadge = bubble.querySelector('.liked-badge');
         if(oldBadge) oldBadge.remove();
         bubble.dataset.liked = "false";
-    } 
-    else if (bubble.dataset.liked === "false" && isLikedByMe) {
+    } else if (bubble.dataset.liked === "false" && isLikedByMe) {
         const badge = document.createElement('div');
         badge.className = 'liked-badge';
         badge.innerHTML = '❤️';
@@ -278,41 +351,28 @@ function updateMessageUI(updatedMsg) {
 const channel = _supabase.channel('room1');
 let idleTimeout;
 let myStatus = 'online'; 
-
 async function updateStatus(status) {
     myStatus = status;
     await channel.track({ user: myName, status: status, color: myColor, online_at: new Date().toISOString() });
 }
-
 function resetIdleTimer() {
     clearTimeout(idleTimeout);
     if (myStatus === 'idle') updateStatus('online');
     idleTimeout = setTimeout(() => { updateStatus('idle'); }, 5 * 60 * 1000); 
 }
-
-channel
-    .on('presence', { event: 'sync' }, () => {
+channel.on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState();
         const users = Object.values(state).flat();
         const uniqueUsers = {};
         users.forEach(u => uniqueUsers[u.user] = u);
-
         el.activeInd.innerHTML = "";
-        
         Object.values(uniqueUsers).forEach(u => {
             const isIdle = u.status === 'idle';
             const userColor = u.color || "#555";
             const initial = u.user.charAt(0).toUpperCase();
-            
             const story = document.createElement('div');
             story.className = 'story-item';
-            story.innerHTML = `
-                <div class="story-ring">
-                    <div class="story-avatar" style="background: ${userColor}">${initial}</div>
-                    <div class="story-status ${isIdle ? 'status-idle' : 'status-online'}"></div>
-                </div>
-                <span class="story-name">${u.user}</span>
-            `;
+            story.innerHTML = `<div class="story-ring"><div class="story-avatar" style="background: ${userColor}">${initial}</div><div class="story-status ${isIdle ? 'status-idle' : 'status-online'}"></div></div><span class="story-name">${u.user}</span>`;
             el.activeInd.appendChild(story);
         });
     })
