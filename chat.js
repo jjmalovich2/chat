@@ -12,6 +12,7 @@ if (!myName) {
     myName = prompt("Enter your name:") || "Guest";
     localStorage.setItem("chat-user", myName);
 }
+// Default to blue if no color is picked yet
 let myColor = localStorage.getItem("chat-color") || "#3797f0";
 
 // --- DOM ELEMENTS ---
@@ -52,47 +53,36 @@ async function sendMessage(content, type = 'text') {
     if (type === 'text') el.input.value = "";
 }
 
-// Send Text
 el.send.onclick = () => { if(el.input.value.trim()) sendMessage(el.input.value.trim()); };
 el.input.onkeydown = (e) => { if(e.key==="Enter" && el.input.value.trim()) sendMessage(el.input.value.trim()); };
 
-// --- FILE UPLOADS (FIXED FOR 'chat-images') ---
+// --- FILE UPLOADS ---
 
 async function uploadFile(file) {
     if(!file) return;
-    
-    // Sanitize filename
     const fileName = `${Date.now()}_${file.name.replace(/\s/g,'_')}`;
     
-    // 1. Upload to 'chat-images' bucket
-    const { data, error } = await _supabase.storage
-        .from('chat-images') // <--- UPDATED HERE
-        .upload(fileName, file);
+    // Upload to 'chat-images'
+    const { data, error } = await _supabase.storage.from('chat-images').upload(fileName, file);
     
     if(error) {
         console.error("Upload Error:", error);
-        alert("Upload Failed: " + error.message);
+        alert("Upload Failed. Check Supabase bucket permissions.");
         return;
     }
     
-    // 2. Get Public URL from 'chat-images'
-    const { data: publicData } = _supabase.storage
-        .from('chat-images') // <--- UPDATED HERE
-        .getPublicUrl(fileName);
-        
-    // 3. Send URL as a message
+    // Get URL
+    const { data: publicData } = _supabase.storage.from('chat-images').getPublicUrl(fileName);
     sendMessage(publicData.publicUrl, 'image');
 }
 
-// Button Listeners
 el.btnImg.onclick = () => el.file.click();
 el.file.onchange = (e) => uploadFile(e.target.files[0]);
-
 el.btnCam.onclick = () => el.cam.click();
 el.cam.onchange = (e) => uploadFile(e.target.files[0]);
 
 
-// --- POOL GAME LOGIC (Horizontal) ---
+// --- POOL GAME LOGIC ---
 
 let poolGame = null;
 
@@ -134,8 +124,7 @@ function openGameFromChat(gameData, isMyTurn) {
     }
 }
 
-
-// --- RENDERING ---
+// --- RENDER (FIXED FOR LEGACY MESSAGES) ---
 
 function renderMessage(msg) {
     const isMe = msg.sender === myName;
@@ -152,24 +141,35 @@ function renderMessage(msg) {
             try {
                 const data = JSON.parse(msg.content);
                 openGameFromChat(data, !isMe);
-            } catch(e) { console.error("Game data error", e); }
+            } catch(e) { console.error(e); }
         };
     } 
     // 2. IMAGE BUBBLE
     else if (msg.message_type === 'image') {
         bubble.className = "message";
+        // Only apply color if it exists
         if(isMe && msg.user_color) bubble.style.backgroundColor = msg.user_color;
         
         const img = document.createElement("img");
         img.src = msg.content;
-        img.onload = () => { el.msgs.scrollTop = el.msgs.scrollHeight; }; // Scroll when loaded
+        img.onload = () => { el.msgs.scrollTop = el.msgs.scrollHeight; };
         bubble.appendChild(img);
     }
-    // 3. TEXT BUBBLE
+    // 3. TEXT BUBBLE (With Legacy HTML Support)
     else {
         bubble.className = "message";
-        bubble.innerText = msg.content;
-        if(isMe && msg.user_color) bubble.style.backgroundColor = msg.user_color;
+        
+        // Fix for missing colors on old messages
+        if(isMe) {
+            bubble.style.backgroundColor = msg.user_color ? msg.user_color : "#3797f0"; // Default Blue
+        } else {
+            // Received messages are always dark gray
+            bubble.style.backgroundColor = "#262626"; 
+        }
+
+        // FIX FOR THE SCREENSHOT PROBLEM:
+        // Use innerHTML so old <img> tags stored as text will render as images
+        bubble.innerHTML = msg.content;
     }
     
     row.appendChild(bubble);
@@ -180,32 +180,23 @@ function renderMessage(msg) {
 
 // --- REALTIME & HISTORY ---
 
-// Presence (Active Status)
 const channel = _supabase.channel('room1');
 channel
     .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState();
         const users = Object.values(state).flat();
-        // Identify if anyone else is here
         const others = users.filter(u => u.user !== myName);
         el.activeInd.style.display = others.length > 0 ? 'flex' : 'none';
     })
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
-        renderMessage(payload.new);
-    })
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, p => renderMessage(p.new))
     .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
             await channel.track({ user: myName, online_at: new Date().toISOString() });
         }
     });
 
-// Load History
 async function fetchHistory() {
     const { data } = await _supabase.from("messages").select("*").order("created_at", {ascending:true});
-    if(data) { 
-        el.msgs.innerHTML=""; 
-        data.forEach(renderMessage); 
-    }
+    if(data) { el.msgs.innerHTML=""; data.forEach(renderMessage); }
 }
-
 fetchHistory();
