@@ -29,13 +29,15 @@ const el = {
     closeGame: document.getElementById("closeGameBtn"),
     statusTitle: document.getElementById("statusTitle"),
     statusSub: document.getElementById("statusSub"),
-    activeInd: document.getElementById("activeIndicator")
+    activeInd: document.getElementById("activeIndicator") // Now the stories container
 };
 
+// Update color locally and update presence immediately
 el.color.value = myColor;
 el.color.addEventListener("change", (e) => {
     myColor = e.target.value;
     localStorage.setItem("chat-color", myColor);
+    updateStatus(myStatus); // Re-broadcast new color
 });
 
 // --- MESSAGING ---
@@ -48,7 +50,7 @@ async function sendMessage(content, type = 'text') {
     };
     await _supabase.from("messages").insert([payload]);
     if (type === 'text') el.input.value = "";
-    resetIdleTimer(); // Typing keeps you active
+    resetIdleTimer();
 }
 
 el.send.onclick = () => { if(el.input.value.trim()) sendMessage(el.input.value.trim()); };
@@ -135,7 +137,6 @@ function renderMessage(msg) {
 
         bubble.innerHTML = msg.content; 
         
-        // SCREAM CHECK
         if (msg.content && msg.content.length > 1 && msg.content === msg.content.toUpperCase() && /[A-Z]/.test(msg.content)) {
             bubble.classList.add('scream');
         }
@@ -146,63 +147,56 @@ function renderMessage(msg) {
     el.msgs.scrollTop = el.msgs.scrollHeight;
 }
 
-// --- IDLE & PRESENCE SYSTEM ---
+// --- IDLE & PRESENCE (STORIES STYLE) ---
 const channel = _supabase.channel('room1');
 let idleTimeout;
-let myStatus = 'online'; // 'online' or 'idle'
+let myStatus = 'online'; 
 
-// 1. Function to broadcast status
 async function updateStatus(status) {
     myStatus = status;
     await channel.track({ 
         user: myName, 
         status: status,
+        color: myColor, // SEND COLOR
         online_at: new Date().toISOString() 
     });
 }
 
-// 2. Idle Timer Logic (5 Mins)
 function resetIdleTimer() {
     clearTimeout(idleTimeout);
-    
-    // If we were idle, wake up!
-    if (myStatus === 'idle') {
-        updateStatus('online');
-    }
-
-    // Set timer for 5 minutes (300,000 ms)
-    idleTimeout = setTimeout(() => {
-        updateStatus('idle');
-    }, 5 * 60 * 1000); 
+    if (myStatus === 'idle') updateStatus('online');
+    idleTimeout = setTimeout(() => { updateStatus('idle'); }, 5 * 60 * 1000); 
 }
 
-// 3. Presence Updates (Showing names)
 channel
     .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState();
         const users = Object.values(state).flat();
         
-        // Remove duplicates (if user has multiple tabs open, take the latest one)
+        // De-duplicate users
         const uniqueUsers = {};
-        users.forEach(u => {
-            // Overwrite if newer or if we haven't seen them
-            uniqueUsers[u.user] = u; 
-        });
+        users.forEach(u => uniqueUsers[u.user] = u);
 
-        // Build HTML for header
+        // Render Stories
         el.activeInd.innerHTML = "";
         
         Object.values(uniqueUsers).forEach(u => {
             const isIdle = u.status === 'idle';
-            const span = document.createElement('span');
-            span.className = 'user-tag';
+            const userColor = u.color || "#555";
+            const initial = u.user.charAt(0).toUpperCase();
             
-            // Dot color based on status
-            const dotClass = isIdle ? 'dot-idle' : 'dot-online';
-            const text = isIdle ? `${u.user} (Idle)` : u.user;
+            // Create Story Item
+            const story = document.createElement('div');
+            story.className = 'story-item';
             
-            span.innerHTML = `<div class="${dotClass}"></div> ${text}`;
-            el.activeInd.appendChild(span);
+            story.innerHTML = `
+                <div class="story-ring">
+                    <div class="story-avatar" style="background: ${userColor}">${initial}</div>
+                    <div class="story-status ${isIdle ? 'status-idle' : 'status-online'}"></div>
+                </div>
+                <span class="story-name">${u.user}</span>
+            `;
+            el.activeInd.appendChild(story);
         });
     })
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, p => renderMessage(p.new))
@@ -213,12 +207,10 @@ channel
         }
     });
 
-// 4. Attach Listeners for Activity
 ['mousemove', 'keydown', 'touchstart', 'click'].forEach(evt => {
     window.addEventListener(evt, resetIdleTimer);
 });
 
-// Load History
 async function fetchHistory() {
     const { data } = await _supabase.from("messages").select("*").order("created_at", {ascending:true});
     if(data) { el.msgs.innerHTML=""; data.forEach(renderMessage); }
