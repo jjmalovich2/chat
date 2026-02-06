@@ -77,7 +77,6 @@
         min-width: 60px;
         transition: opacity 0.5s ease;
       }
-
       .avatar-circle {
         width: 48px;
         height: 48px;
@@ -124,14 +123,12 @@
         white-space: nowrap;
       }
 
-      /* --- IDLE / AWAY STYLING --- */
       .user-status.idle {
-        opacity: 0.5; /* Greyed out */
+        opacity: 0.5;
       }
       .user-status.idle .status-dot {
-        background-color: #ffcc00; /* Yellow dot for away/idle */
+        background-color: #ffcc00;
       }
-      /* The ZZZ Emoji Overlay */
       .zzz-overlay {
         position: absolute;
         top: -5px;
@@ -145,7 +142,6 @@
       .user-status.idle .zzz-overlay {
         display: block;
       }
-
       @keyframes floatZ {
         0% {
           transform: translate(0, 0) scale(0.8);
@@ -208,47 +204,39 @@
         display: flex;
         flex-direction: column;
         z-index: 2;
+        /* Default colors if none set */
+        background-color: var(--msg-received);
+        color: white;
       }
       .message:active {
         cursor: grabbing;
       }
 
       .sent .message {
-        background-color: var(--msg-sent);
-        color: white;
         border-bottom-right-radius: 4px;
       }
       .received .message {
-        background-color: var(--msg-received);
         border-bottom-left-radius: 4px;
       }
 
-      /* --- Link Styling --- */
       .message a {
         text-decoration: underline;
         word-break: break-all;
         cursor: pointer;
-      }
-      .sent .message a {
-        color: white;
-      }
-      .received .message a {
-        color: #e0f1ff;
+        color: inherit;
       }
 
-      /* --- NEW SCREAM LOGIC --- */
+      /* --- SCREAM LOGIC --- */
       .text-content {
         display: inline-block;
         transition: font-size 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         transform-origin: left center;
       }
-
       .scream {
         font-size: 2.2em;
         font-weight: 800;
         animation: shakeScream 0.8s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
       }
-
       @keyframes shakeScream {
         0% {
           transform: translate(0, 0) rotate(0deg);
@@ -289,8 +277,7 @@
         font-size: 11px;
         font-weight: 600;
         margin-bottom: 4px;
-        opacity: 0.7;
-        color: #aaa;
+        opacity: 0.8;
         margin-left: 10px;
       }
       .chat-image {
@@ -303,7 +290,6 @@
         pointer-events: none;
       }
 
-      /* --- Heart Like Styling --- */
       .heart-badge {
         position: absolute;
         bottom: -10px;
@@ -330,36 +316,6 @@
         right: -8px;
       }
 
-      /* --- ANIMATIONS --- */
-      .big-heart-pop {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%) scale(0);
-        font-size: 40px;
-        pointer-events: none;
-        opacity: 0;
-        z-index: 10;
-      }
-      @keyframes popHeart {
-        0% {
-          transform: translate(-50%, -50%) scale(0);
-          opacity: 0;
-        }
-        50% {
-          transform: translate(-50%, -50%) scale(1.5);
-          opacity: 1;
-        }
-        100% {
-          transform: translate(-50%, -50%) scale(1);
-          opacity: 0;
-        }
-      }
-      .animate-pop {
-        animation: popHeart 0.8s ease-out forwards;
-      }
-
-      /* --- HEART BREAK SVG ANIMATION --- */
       .break-container {
         position: absolute;
         top: 50%;
@@ -407,8 +363,34 @@
           opacity: 0;
         }
       }
+      .big-heart-pop {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) scale(0);
+        font-size: 40px;
+        pointer-events: none;
+        opacity: 0;
+        z-index: 10;
+      }
+      @keyframes popHeart {
+        0% {
+          transform: translate(-50%, -50%) scale(0);
+          opacity: 0;
+        }
+        50% {
+          transform: translate(-50%, -50%) scale(1.5);
+          opacity: 1;
+        }
+        100% {
+          transform: translate(-50%, -50%) scale(1);
+          opacity: 0;
+        }
+      }
+      .animate-pop {
+        animation: popHeart 0.8s ease-out forwards;
+      }
 
-      /* --- Reply Styling --- */
       .reply-quote-block {
         background-color: rgba(0, 0, 0, 0.2);
         border-left: 3px solid rgba(255, 255, 255, 0.5);
@@ -448,13 +430,13 @@
         margin-bottom: 2px;
       }
 
-      /* --- Input Bar --- */
+      /* --- Input Bar & Color Picker --- */
       .input-area {
         padding: 20px;
         border-top: 1px solid var(--insta-gray);
         display: flex;
         align-items: center;
-        gap: 15px;
+        gap: 10px;
         background: var(--insta-bg);
       }
       .icon-btn {
@@ -468,6 +450,38 @@
       .icon-btn:hover {
         opacity: 0.7;
       }
+
+      /* Color Picker Styling */
+      .color-wrapper {
+        position: relative;
+        width: 30px;
+        height: 30px;
+        overflow: hidden;
+        border-radius: 50%;
+        border: 2px solid #555;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+      }
+      #colorInput {
+        position: absolute;
+        top: -10px;
+        left: -10px;
+        width: 50px;
+        height: 50px;
+        cursor: pointer;
+        padding: 0;
+        border: none;
+        background: none;
+      }
+      .color-icon {
+        font-size: 14px;
+        pointer-events: none;
+        z-index: 2;
+        text-shadow: 0 0 2px black;
+      }
+
       #msgInput {
         flex: 1;
         padding: 14px 24px;
@@ -493,7 +507,6 @@
         color: white;
       }
 
-      /* --- CAMERA & OVERLAYS --- */
       #cameraOverlay {
         position: fixed;
         top: 0;
@@ -541,7 +554,6 @@
         display: none;
       }
 
-      /* --- TYPING & SEEN UI --- */
       #typingWrapper {
         display: none;
         flex-direction: column;
@@ -646,6 +658,12 @@
         <input type="file" id="fileInput" accept="image/*" hidden />
         <button id="fileBtn" class="icon-btn">📎</button>
         <button id="cameraBtn" class="icon-btn">📷</button>
+
+        <div class="color-wrapper" title="Pick Message Color">
+          <span class="color-icon">🎨</span>
+          <input type="color" id="colorInput" value="#3797f0" />
+        </div>
+
         <input
           type="text"
           id="msgInput"
@@ -660,8 +678,8 @@
       <video id="cameraVideo" autoplay playsinline></video>
       <canvas id="canvas"></canvas>
       <div class="camera-controls">
-        <button id="closeCameraBtn">Cancel</button>
-        <button id="snapBtn"></button>
+        <button id="closeCameraBtn">Cancel</button
+        ><button id="snapBtn"></button>
       </div>
     </div>
 
@@ -679,8 +697,6 @@
       let isTyping = false;
       let lastSentMessageTime = null;
       let myName = "";
-
-      // Store all user last_seen timestamps here
       let userTimestamps = {};
 
       window.addEventListener("DOMContentLoaded", () => {
@@ -689,6 +705,15 @@
           myName = prompt("Enter your name for the chat:") || "Guest";
           localStorage.setItem("chat-user", myName);
         }
+
+        // --- LOAD SAVED COLOR ---
+        const savedColor = localStorage.getItem("chat-color") || "#3797f0";
+        const colorInput = document.getElementById("colorInput");
+        colorInput.value = savedColor;
+
+        colorInput.addEventListener("change", (e) => {
+          localStorage.setItem("chat-color", e.target.value);
+        });
 
         const msgInput = document.getElementById("msgInput");
         const sendBtn = document.getElementById("sendBtn");
@@ -711,6 +736,21 @@
         const snapBtn = document.getElementById("snapBtn");
         const closeCameraBtn = document.getElementById("closeCameraBtn");
         const canvas = document.getElementById("canvas");
+
+        // --- COMPLEMENTARY COLOR LOGIC ---
+        function getComplementaryColor(hex) {
+          // Remove hash if present
+          hex = hex.replace("#", "");
+          // Convert to RGB
+          let r = parseInt(hex.substring(0, 2), 16);
+          let g = parseInt(hex.substring(2, 4), 16);
+          let b = parseInt(hex.substring(4, 6), 16);
+          // Invert
+          r = (255 - r).toString(16).padStart(2, "0");
+          g = (255 - g).toString(16).padStart(2, "0");
+          b = (255 - b).toString(16).padStart(2, "0");
+          return `#${r}${g}${b}`;
+        }
 
         function formatTime(dateObj) {
           return dateObj.toLocaleTimeString([], {
@@ -748,17 +788,13 @@
         }
 
         async function checkStatusLoop() {
-          // 1. Fetch timestamps for idle checking + 'Seen' text
           const { data: users } = await _supabase
             .from("user_presence")
             .select("*");
           if (users) {
-            // Update local cache
             users.forEach((u) => {
               userTimestamps[u.username] = new Date(u.last_seen);
             });
-
-            // Update 'Seen' text indicator logic
             if (lastSentMessageTime) {
               const otherUser = users.find((u) => u.username !== myName);
               if (otherUser) {
@@ -775,60 +811,31 @@
               }
             }
           }
-
-          // 2. Re-render the active list to apply "idle" classes based on time
           renderActiveList();
         }
-
-        // Run check loop often (every 5 seconds) to catch idle status updates
         setInterval(checkStatusLoop, 5000);
-
         msgInput.addEventListener("focus", updateMySeenStatus);
         window.addEventListener("click", updateMySeenStatus);
 
-        // --- NEW RENDER ACTIVE LIST LOGIC ---
         function renderActiveList() {
           const state = presenceChannel.presenceState();
           const onlineUsers = Object.keys(state);
-
-          // Get unique list of users (either online OR in our timestamp DB)
-          // We prioritize "online" users, but map their status to the timestamps
           if (onlineUsers.length === 0) {
             activeListDiv.innerHTML = "";
             return;
           }
-
           const now = new Date();
-
           activeListDiv.innerHTML = onlineUsers
             .map((name) => {
               const initial = name.charAt(0).toUpperCase();
-
-              // CHECK IDLE STATUS
-              // If last seen was > 3 minutes ago
               let isIdle = false;
               if (userTimestamps[name]) {
-                const diffMs = now - userTimestamps[name];
-                const diffMins = diffMs / 1000 / 60;
-                if (diffMins > 3) {
-                  isIdle = true;
-                }
+                if ((now - userTimestamps[name]) / 1000 / 60 > 3) isIdle = true;
               }
-
-              // Apply classes based on idle status
               const idleClass = isIdle ? "idle" : "";
-
-              return `
-                 <div class="user-status ${idleClass}">
-                    <div class="avatar-circle">
-                        <div class="avatar-inner">${initial}</div>
-                    </div>
-                    <div class="zzz-overlay">💤</div>
-                    <span class="status-dot"></span>
-                    <span class="username-label">${
-                      name === myName ? "You" : name
-                    }</span>
-                 </div>`;
+              return `<div class="user-status ${idleClass}"><div class="avatar-circle"><div class="avatar-inner">${initial}</div></div><div class="zzz-overlay">💤</div><span class="status-dot"></span><span class="username-label">${
+                name === myName ? "You" : name
+              }</span></div>`;
             })
             .join("");
         }
@@ -873,10 +880,25 @@
 
           div = document.createElement("div");
           div.className = "message";
-
           div.savedLikes = data.liked_by || [];
 
-          // --- LIKE LOGIC ---
+          // --- APPLY COLORS ---
+          // If the message has a specific color, apply it.
+          if (data.user_color) {
+            const bgColor = data.user_color;
+            const textColor = getComplementaryColor(bgColor);
+
+            div.style.backgroundColor = bgColor;
+            div.style.color = textColor;
+
+            // We need to force links to inherit color for readability
+            // This is handled by CSS .message a { color: inherit; }
+          } else {
+            // Fallback for old messages: sent is blue, received is dark gray
+            if (isMe) div.style.backgroundColor = "var(--msg-sent)";
+            else div.style.backgroundColor = "var(--msg-received)";
+          }
+
           let lastTap = 0;
           const handleLikeToggle = () => {
             const isUnliking = div.savedLikes.includes(myName);
@@ -884,11 +906,7 @@
             if (isUnliking) {
               const container = document.createElement("div");
               container.className = "break-container";
-              container.innerHTML = `
-                   <svg viewBox="0 0 24 24" width="80" height="80">
-                      <path class="heart-path left-half" d="M12 21.35 l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 C2 5.42 4.42 3 7.5 3 c1.74 0 3.41.81 4.5 2.09 L 12 5 L 11 9 L 13 13 L 11 17 L 12 21.35 Z" />
-                      <path class="heart-path right-half" d="M12 21.35 L 11 17 L 13 13 L 11 9 L 12 5 C 13.09 3.81 14.76 3 16.5 3 C 19.58 3 22 5.42 22 8.5 c 0 3.78 -3.4 6.86 -8.55 11.54 L 12 21.35 Z" />
-                   </svg>`;
+              container.innerHTML = `<svg viewBox="0 0 24 24" width="80" height="80"><path class="heart-path left-half" d="M12 21.35 l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 C2 5.42 4.42 3 7.5 3 c1.74 0 3.41.81 4.5 2.09 L 12 5 L 11 9 L 13 13 L 11 17 L 12 21.35 Z" /><path class="heart-path right-half" d="M12 21.35 L 11 17 L 13 13 L 11 9 L 12 5 C 13.09 3.81 14.76 3 16.5 3 C 19.58 3 22 5.42 22 8.5 c 0 3.78 -3.4 6.86 -8.55 11.54 L 12 21.35 Z" /></svg>`;
               div.appendChild(container);
               setTimeout(() => container.remove(), 1000);
             } else {
@@ -971,14 +989,11 @@
 
           let contentHtml = "";
           let isScreaming = false;
-
           if (data.message_type === "image") {
             contentHtml = `<img src="${data.image_url}" class="chat-image" loading="lazy" />`;
           } else {
             const text = data.content || "";
             isScreaming = /[a-zA-Z]/.test(text) && text === text.toUpperCase();
-
-            // Use a wrapper class 'text-content' for the base state
             contentHtml = `<div class="text-content">${linkify(text)}</div>`;
           }
 
@@ -992,7 +1007,6 @@
           div.innerHTML = `${nameLabel} ${replyBlock} ${contentHtml}`;
           div.appendChild(heartBadge);
 
-          // --- TRIGGER SCREAM ANIMATION ---
           if (isScreaming) {
             const textDiv = div.querySelector(".text-content");
             if (textDiv) {
@@ -1067,6 +1081,10 @@
           msgInput.placeholder = "Uploading...";
           fileBtn.disabled = true;
           cameraBtn.disabled = true;
+
+          // Get current color
+          const myColor = document.getElementById("colorInput").value;
+
           const fileName = `${Date.now()}_captured.jpg`;
           const { error } = await _supabase.storage
             .from("chat-images")
@@ -1075,17 +1093,16 @@
             const { data: urlData } = _supabase.storage
               .from("chat-images")
               .getPublicUrl(fileName);
-            await _supabase
-              .from("messages")
-              .insert([
-                {
-                  sender: myName,
-                  message_type: "image",
-                  image_url: urlData.publicUrl,
-                  content: "📷 Image",
-                  reply_to: currentReplyData,
-                },
-              ]);
+            await _supabase.from("messages").insert([
+              {
+                sender: myName,
+                message_type: "image",
+                image_url: urlData.publicUrl,
+                content: "📷 Image",
+                reply_to: currentReplyData,
+                user_color: myColor,
+              },
+            ]);
           }
           msgInput.placeholder = "Message...";
           fileBtn.disabled = false;
@@ -1142,16 +1159,12 @@
           if (!error) {
             const children = Array.from(msgDiv.children);
             children.forEach((child) => {
-              if (
-                child.id !== "seenIndicator" &&
-                child.id !== "typingWrapper"
-              ) {
+              if (child.id !== "seenIndicator" && child.id !== "typingWrapper")
                 msgDiv.removeChild(child);
-              }
             });
             lastMessageTime = null;
             data.forEach(renderMessage);
-            checkStatusLoop(); // Run once immediately
+            checkStatusLoop();
             updateMySeenStatus();
           }
         }
@@ -1168,16 +1181,18 @@
             payload: { sender: myName, isTyping: false },
           });
 
-          await _supabase
-            .from("messages")
-            .insert([
-              {
-                content: content,
-                sender: myName,
-                message_type: "text",
-                reply_to: currentReplyData,
-              },
-            ]);
+          // Get current color
+          const myColor = document.getElementById("colorInput").value;
+
+          await _supabase.from("messages").insert([
+            {
+              content: content,
+              sender: myName,
+              message_type: "text",
+              reply_to: currentReplyData,
+              user_color: myColor, // Send the color
+            },
+          ]);
           if (currentReplyData)
             document.getElementById("cancelReplyBtn").click();
         }
@@ -1187,7 +1202,7 @@
         });
         presenceChannel
           .on("presence", { event: "sync" }, () => {
-            renderActiveList(); // Update UI when presence changes
+            renderActiveList();
           })
           .subscribe(async (status) => {
             if (status === "SUBSCRIBED")
@@ -1220,7 +1235,7 @@
             "postgres_changes",
             { event: "*", schema: "public", table: "user_presence" },
             () => checkStatusLoop()
-          ) // If status table changes, update UI
+          )
           .on("broadcast", { event: "typing" }, (payload) => {
             if (payload.payload.sender !== myName) {
               if (payload.payload.isTyping) {
