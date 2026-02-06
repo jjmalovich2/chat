@@ -1,5 +1,6 @@
 import { PoolGame } from './pool.js';
 
+// --- CONFIG ---
 const SUPABASE_URL = "https://xyvyocpdekeewoyvomuv.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh5dnlvY3BkZWtlZXdveXZvbXV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxNjc0NTEsImV4cCI6MjA4NTc0MzQ1MX0.8VkWO7vxdm4GrMp2FCeF4Ds7sxUVWo1AxOrxbeu4f4Y";
 const { createClient } = supabase;
@@ -13,7 +14,7 @@ if (!myName) {
 }
 let myColor = localStorage.getItem("chat-color") || "#3797f0";
 
-// --- DOM ---
+// --- DOM ELEMENTS ---
 const el = {
     msgs: document.getElementById("messages"),
     input: document.getElementById("msgInput"),
@@ -31,14 +32,15 @@ const el = {
     activeInd: document.getElementById("activeIndicator")
 };
 
-// Color Picker Logic
+// Set initial color
 el.color.value = myColor;
 el.color.addEventListener("change", (e) => {
     myColor = e.target.value;
     localStorage.setItem("chat-color", myColor);
 });
 
-// --- MESSAGING ---
+// --- MESSAGING FUNCTIONS ---
+
 async function sendMessage(content, type = 'text') {
     const payload = {
         sender: myName,
@@ -50,27 +52,48 @@ async function sendMessage(content, type = 'text') {
     if (type === 'text') el.input.value = "";
 }
 
+// Send Text
 el.send.onclick = () => { if(el.input.value.trim()) sendMessage(el.input.value.trim()); };
 el.input.onkeydown = (e) => { if(e.key==="Enter" && el.input.value.trim()) sendMessage(el.input.value.trim()); };
 
-// --- FILE UPLOADS (Restored) ---
+// --- FILE UPLOADS (FIXED FOR 'chat-images') ---
+
 async function uploadFile(file) {
     if(!file) return;
+    
+    // Sanitize filename
     const fileName = `${Date.now()}_${file.name.replace(/\s/g,'_')}`;
-    const { data, error } = await _supabase.storage.from('uploads').upload(fileName, file);
+    
+    // 1. Upload to 'chat-images' bucket
+    const { data, error } = await _supabase.storage
+        .from('chat-images') // <--- UPDATED HERE
+        .upload(fileName, file);
+    
     if(error) {
-        alert("Upload Error: Ensure 'uploads' bucket exists in Supabase.");
+        console.error("Upload Error:", error);
+        alert("Upload Failed: " + error.message);
         return;
     }
-    const url = _supabase.storage.from('uploads').getPublicUrl(fileName).data.publicUrl;
-    sendMessage(url, 'image');
+    
+    // 2. Get Public URL from 'chat-images'
+    const { data: publicData } = _supabase.storage
+        .from('chat-images') // <--- UPDATED HERE
+        .getPublicUrl(fileName);
+        
+    // 3. Send URL as a message
+    sendMessage(publicData.publicUrl, 'image');
 }
+
+// Button Listeners
 el.btnImg.onclick = () => el.file.click();
 el.file.onchange = (e) => uploadFile(e.target.files[0]);
+
 el.btnCam.onclick = () => el.cam.click();
 el.cam.onchange = (e) => uploadFile(e.target.files[0]);
 
+
 // --- POOL GAME LOGIC (Horizontal) ---
+
 let poolGame = null;
 
 function initPool() {
@@ -111,7 +134,9 @@ function openGameFromChat(gameData, isMyTurn) {
     }
 }
 
-// --- RENDER ---
+
+// --- RENDERING ---
+
 function renderMessage(msg) {
     const isMe = msg.sender === myName;
     const row = document.createElement("div");
@@ -119,16 +144,28 @@ function renderMessage(msg) {
     
     const bubble = document.createElement("div");
     
+    // 1. GAME BUBBLE
     if(msg.message_type === 'game_pool') {
         bubble.className = "message game-bubble";
         bubble.innerHTML = `<span class="game-icon">🎱</span><span class="game-text">${isMe?"Played":"Your Turn"}</span>`;
-        bubble.onclick = () => openGameFromChat(JSON.parse(msg.content), !isMe);
+        bubble.onclick = () => {
+            try {
+                const data = JSON.parse(msg.content);
+                openGameFromChat(data, !isMe);
+            } catch(e) { console.error("Game data error", e); }
+        };
     } 
+    // 2. IMAGE BUBBLE
     else if (msg.message_type === 'image') {
         bubble.className = "message";
         if(isMe && msg.user_color) bubble.style.backgroundColor = msg.user_color;
-        bubble.innerHTML = `<img src="${msg.content}" />`;
+        
+        const img = document.createElement("img");
+        img.src = msg.content;
+        img.onload = () => { el.msgs.scrollTop = el.msgs.scrollHeight; }; // Scroll when loaded
+        bubble.appendChild(img);
     }
+    // 3. TEXT BUBBLE
     else {
         bubble.className = "message";
         bubble.innerText = msg.content;
@@ -140,18 +177,22 @@ function renderMessage(msg) {
     el.msgs.scrollTop = el.msgs.scrollHeight;
 }
 
-// --- REALTIME & PRESENCE (Restored) ---
-const channel = _supabase.channel('room1');
 
+// --- REALTIME & HISTORY ---
+
+// Presence (Active Status)
+const channel = _supabase.channel('room1');
 channel
     .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState();
-        // Check if anyone else is online
         const users = Object.values(state).flat();
+        // Identify if anyone else is here
         const others = users.filter(u => u.user !== myName);
         el.activeInd.style.display = others.length > 0 ? 'flex' : 'none';
     })
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, p => renderMessage(p.new))
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
+        renderMessage(payload.new);
+    })
     .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
             await channel.track({ user: myName, online_at: new Date().toISOString() });
@@ -161,6 +202,10 @@ channel
 // Load History
 async function fetchHistory() {
     const { data } = await _supabase.from("messages").select("*").order("created_at", {ascending:true});
-    if(data) { el.msgs.innerHTML=""; data.forEach(renderMessage); }
+    if(data) { 
+        el.msgs.innerHTML=""; 
+        data.forEach(renderMessage); 
+    }
 }
+
 fetchHistory();
