@@ -6,10 +6,10 @@
     <title>Ava & JJ Chat</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        /* --- DARK MODE CORE --- */
+        /* --- CORE STYLES --- */
         body { background: #000; color: white; font-family: -apple-system, system-ui, sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         
-        /* HEADER (With Active Status) */
+        /* HEADER */
         header { 
             padding: 10px; border-bottom: 1px solid #262626; background: #000; z-index: 10; 
             text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -26,9 +26,25 @@
         
         /* BUBBLES */
         .message { padding: 10px 15px; border-radius: 20px; max-width: 75%; font-size: 15px; position: relative; word-wrap: break-word; }
-        .sent .message { border-bottom-right-radius: 4px; /* Color set via JS */ }
+        .sent .message { border-bottom-right-radius: 4px; }
         .received .message { border-bottom-left-radius: 4px; background: #262626; color: #fff; }
         
+        /* --- SCREAM EFFECT (New) --- */
+        .scream {
+            font-size: 24px !important;
+            font-weight: 900 !important;
+            letter-spacing: 1px;
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+            padding: 15px 20px; /* Bigger padding for bigger text */
+        }
+        
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+
         /* IMAGES */
         .message img { max-width: 100%; border-radius: 12px; margin-top: 5px; display: block; }
 
@@ -37,19 +53,18 @@
         .game-icon { font-size: 30px; display: block; margin: 5px 0; }
         .game-text { font-size: 11px; font-weight: 700; color: #3797f0; text-transform: uppercase; letter-spacing: 1px; }
 
-        /* INPUT AREA (Full Suite) */
+        /* INPUT AREA */
         .input-area { padding: 10px; border-top: 1px solid #262626; display: flex; align-items: center; gap: 8px; background: #000; }
         .icon-btn { background: none; border: none; font-size: 22px; cursor: pointer; padding: 5px; transition: transform 0.1s; }
         .icon-btn:active { transform: scale(0.9); }
         
-        /* Color Picker Hidden Wrapper */
         .color-wrap { position: relative; width: 24px; height: 24px; border-radius: 50%; overflow: hidden; border: 2px solid #444; }
         #colorInput { position: absolute; top: -5px; left: -5px; width: 40px; height: 40px; cursor: pointer; border: none; padding: 0; }
 
         #msgInput { flex: 1; padding: 10px 15px; border-radius: 20px; border: 1px solid #333; background: #121212; color: white; outline: none; font-size: 15px; }
         #sendBtn { color: #3797f0; background: none; border: none; font-weight: 600; cursor: pointer; padding: 0 5px; }
 
-        /* GAME MODAL (Horizontal Layout) */
+        /* GAME MODAL (Horizontal) */
         #gameModal {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.95); z-index: 1000;
@@ -58,18 +73,7 @@
         #gameInfo { position: absolute; top: 20px; text-align: center; width: 100%; pointer-events: none; }
         #statusTitle { font-size: 24px; font-weight: 800; display: block; text-shadow: 0 2px 10px black; }
         #statusSub { font-size: 14px; color: #ddd; text-shadow: 0 2px 5px black; }
-        
-        /* Horizontal Canvas */
-        #poolCanvas { 
-            background: #2e7d32; 
-            border: 15px solid #3e2723; 
-            border-radius: 12px; 
-            box-shadow: 0 20px 50px rgba(0,0,0,0.9);
-            /* Fit horizontally */
-            max-width: 95vw;
-            max-height: 80vh; 
-        }
-        
+        #poolCanvas { background: #2e7d32; border: 15px solid #3e2723; border-radius: 12px; box-shadow: 0 20px 50px rgba(0,0,0,0.9); max-width: 95vw; max-height: 80vh; }
         #closeGameBtn { position: absolute; bottom: 30px; padding: 10px 25px; background: #333; color: white; border: none; border-radius: 30px; cursor: pointer; font-weight: 600; }
     </style>
 </head>
