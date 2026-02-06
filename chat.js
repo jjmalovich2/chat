@@ -21,13 +21,9 @@ const el = {
     send: document.getElementById("sendBtn"),
     color: document.getElementById("colorInput"),
     file: document.getElementById("fileInput"),
-    
-    // Buttons
     btnImg: document.getElementById("imgBtn"),
     btnCam: document.getElementById("camBtn"),
     btnGame: document.getElementById("newGameBtn"),
-    
-    // Modals
     modal: document.getElementById("gameModal"),
     closeGame: document.getElementById("closeGameBtn"),
     statusTitle: document.getElementById("statusTitle"),
@@ -36,7 +32,6 @@ const el = {
     camView: document.getElementById("cameraView"),
     shutter: document.getElementById("shutterBtn"),
     closeCam: document.getElementById("closeCamBtn"),
-    
     activeInd: document.getElementById("activeIndicator")
 };
 
@@ -54,7 +49,7 @@ async function sendMessage(content, type = 'text') {
         content: content,
         message_type: type,
         user_color: myColor,
-        is_liked: false
+        liked_by: [] // Initialize empty array for new messages
     };
     await _supabase.from("messages").insert([payload]);
     if (type === 'text') el.input.value = "";
@@ -106,7 +101,6 @@ function takePhoto() {
         stopCamera();
     }, "image/jpeg", 0.8);
 }
-
 el.btnCam.onclick = startCamera;
 el.closeCam.onclick = stopCamera;
 el.shutter.onclick = takePhoto;
@@ -151,17 +145,22 @@ function openGameFromChat(gameData, isMyTurn) {
     }
 }
 
-// --- RENDER MESSAGES ---
+// --- MESSAGE RENDERING ---
 function renderMessage(msg) {
     const isMe = msg.sender === myName;
     const row = document.createElement("div");
     row.className = `message-row ${isMe ? "sent" : "received"}`;
     
-    const bubble = document.createElement("div");
-    bubble.dataset.id = msg.id; // Store ID for liking
-    bubble.dataset.liked = msg.is_liked ? "true" : "false";
+    // Check if I liked this message
+    // msg.liked_by is an array, e.g., ["Ava", "JJ"]
+    const likesList = msg.liked_by || [];
+    const isLikedByMe = likesList.includes(myName);
 
-    // 1. CONTENT
+    const bubble = document.createElement("div");
+    bubble.dataset.id = msg.id;
+    bubble.dataset.liked = isLikedByMe ? "true" : "false";
+
+    // Content Handling
     if(msg.message_type === 'game_pool') {
         bubble.className = "message game-bubble";
         bubble.innerHTML = `<span class="game-icon">🎱</span><span class="game-text">${isMe?"Played":"Your Turn"}</span>`;
@@ -183,46 +182,64 @@ function renderMessage(msg) {
         }
     }
 
-    // 2. LIKE BADGE (If exists)
-    if(msg.is_liked) {
+    // Initial Badge Render
+    if(isLikedByMe) {
         const badge = document.createElement('div');
         badge.className = 'liked-badge';
         badge.innerHTML = '❤️';
         bubble.appendChild(badge);
     }
 
-    // 3. DOUBLE CLICK TO LIKE
+    // --- DOUBLE CLICK HANDLER (Array Logic) ---
     bubble.addEventListener('dblclick', async (e) => {
         e.stopPropagation();
         e.preventDefault();
         
-        const currentLiked = bubble.dataset.liked === "true";
-        const newLiked = !currentLiked;
+        // 1. Fetch latest state to ensure we don't overwrite others' likes
+        const { data: currentMsg } = await _supabase
+            .from('messages')
+            .select('liked_by')
+            .eq('id', msg.id)
+            .single();
 
-        // Optimistic UI Update (Instant Visual)
-        bubble.dataset.liked = newLiked;
+        let currentLikes = currentMsg.liked_by || [];
+        const wasLiked = currentLikes.includes(myName);
         
-        // Remove existing badge
+        // 2. Toggle Logic
+        let newLikes;
+        if (wasLiked) {
+            // Remove name
+            newLikes = currentLikes.filter(name => name !== myName);
+        } else {
+            // Add name
+            newLikes = [...currentLikes, myName];
+        }
+
+        // 3. Optimistic UI (Fast response)
         const oldBadge = bubble.querySelector('.liked-badge');
         if(oldBadge) oldBadge.remove();
 
-        if (newLiked) {
+        if (!wasLiked) { // We just liked it
+            // Play Animation
+            const heart = document.createElement('div');
+            heart.className = 'heart-pop';
+            heart.innerHTML = '❤️';
+            bubble.appendChild(heart);
+            setTimeout(() => heart.remove(), 800); // Cleanup
+
             // Add Badge
             const badge = document.createElement('div');
             badge.className = 'liked-badge';
             badge.innerHTML = '❤️';
             bubble.appendChild(badge);
-
-            // Pop Animation
-            const heart = document.createElement('div');
-            heart.className = 'heart-pop';
-            heart.innerHTML = '❤️';
-            bubble.appendChild(heart);
-            setTimeout(() => heart.remove(), 800);
+            
+            bubble.dataset.liked = "true";
+        } else {
+            bubble.dataset.liked = "false";
         }
 
-        // Database Update
-        await _supabase.from("messages").update({ is_liked: newLiked }).eq("id", msg.id);
+        // 4. Save to DB
+        await _supabase.from("messages").update({ liked_by: newLikes }).eq("id", msg.id);
     });
     
     row.appendChild(bubble);
@@ -230,20 +247,22 @@ function renderMessage(msg) {
     el.msgs.scrollTop = el.msgs.scrollHeight;
 }
 
-// --- UPDATE HANDLER (For Realtime Likes) ---
+// --- UPDATE UI WHEN DB CHANGES ---
 function updateMessageUI(updatedMsg) {
-    // Find the bubble
     const bubble = document.querySelector(`.message[data-id="${updatedMsg.id}"]`);
     if(!bubble) return;
 
-    bubble.dataset.liked = updatedMsg.is_liked ? "true" : "false";
+    const likesList = updatedMsg.liked_by || [];
+    const isLikedByMe = likesList.includes(myName);
 
-    // Remove existing badge
+    bubble.dataset.liked = isLikedByMe ? "true" : "false";
+
+    // Remove old badge
     const oldBadge = bubble.querySelector('.liked-badge');
     if(oldBadge) oldBadge.remove();
 
-    // Add new badge if liked
-    if (updatedMsg.is_liked) {
+    // Add new badge if liked by ME
+    if (isLikedByMe) {
         const badge = document.createElement('div');
         badge.className = 'liked-badge';
         badge.innerHTML = '❤️';
@@ -283,7 +302,6 @@ channel
             
             const story = document.createElement('div');
             story.className = 'story-item';
-            
             story.innerHTML = `
                 <div class="story-ring">
                     <div class="story-avatar" style="background: ${userColor}">${initial}</div>
@@ -294,7 +312,6 @@ channel
             el.activeInd.appendChild(story);
         });
     })
-    // LISTEN FOR BOTH INSERTS AND UPDATES
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, p => renderMessage(p.new))
     .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' }, p => updateMessageUI(p.new))
     .subscribe(async (status) => {
