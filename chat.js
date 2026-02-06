@@ -21,23 +21,32 @@ const el = {
     send: document.getElementById("sendBtn"),
     color: document.getElementById("colorInput"),
     file: document.getElementById("fileInput"),
-    cam: document.getElementById("camInput"),
+    
+    // Buttons
     btnImg: document.getElementById("imgBtn"),
     btnCam: document.getElementById("camBtn"),
     btnGame: document.getElementById("newGameBtn"),
+    
+    // Game Modal
     modal: document.getElementById("gameModal"),
     closeGame: document.getElementById("closeGameBtn"),
     statusTitle: document.getElementById("statusTitle"),
     statusSub: document.getElementById("statusSub"),
-    activeInd: document.getElementById("activeIndicator") // Now the stories container
+    
+    // Camera Modal
+    camModal: document.getElementById("cameraModal"),
+    camView: document.getElementById("cameraView"),
+    shutter: document.getElementById("shutterBtn"),
+    closeCam: document.getElementById("closeCamBtn"),
+    
+    activeInd: document.getElementById("activeIndicator")
 };
 
-// Update color locally and update presence immediately
 el.color.value = myColor;
 el.color.addEventListener("change", (e) => {
     myColor = e.target.value;
     localStorage.setItem("chat-color", myColor);
-    updateStatus(myStatus); // Re-broadcast new color
+    updateStatus(myStatus);
 });
 
 // --- MESSAGING ---
@@ -56,10 +65,10 @@ async function sendMessage(content, type = 'text') {
 el.send.onclick = () => { if(el.input.value.trim()) sendMessage(el.input.value.trim()); };
 el.input.onkeydown = (e) => { if(e.key==="Enter" && el.input.value.trim()) sendMessage(el.input.value.trim()); };
 
-// --- UPLOADS ---
+// --- FILE UPLOADS (Gallery) ---
 async function uploadFile(file) {
     if(!file) return;
-    const fileName = `${Date.now()}_${file.name.replace(/\s/g,'_')}`;
+    const fileName = `${Date.now()}_${file.name ? file.name.replace(/\s/g,'_') : 'cam_photo.jpg'}`;
     const { data, error } = await _supabase.storage.from('chat-images').upload(fileName, file);
     if(error) { alert("Upload Failed: " + error.message); return; }
     const { data: publicData } = _supabase.storage.from('chat-images').getPublicUrl(fileName);
@@ -68,8 +77,59 @@ async function uploadFile(file) {
 
 el.btnImg.onclick = () => el.file.click();
 el.file.onchange = (e) => uploadFile(e.target.files[0]);
-el.btnCam.onclick = () => el.cam.click();
-el.cam.onchange = (e) => uploadFile(e.target.files[0]);
+
+// --- CAMERA (Live Stream) ---
+let stream = null;
+
+async function startCamera() {
+    try {
+        el.camModal.style.display = 'flex';
+        // Request camera (prefer front-facing/user)
+        stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: "user" }, 
+            audio: false 
+        });
+        el.camView.srcObject = stream;
+    } catch (err) {
+        alert("Could not access camera. Ensure permissions are allowed.");
+        el.camModal.style.display = 'none';
+    }
+}
+
+function stopCamera() {
+    if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+    }
+    el.camModal.style.display = 'none';
+}
+
+function takePhoto() {
+    if (!stream) return;
+    
+    // Create a canvas to capture the frame
+    const canvas = document.createElement("canvas");
+    canvas.width = el.camView.videoWidth;
+    canvas.height = el.camView.videoHeight;
+    const ctx = canvas.getContext("2d");
+    
+    // Flip horizontally if using front cam (to match preview)
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+    
+    ctx.drawImage(el.camView, 0, 0, canvas.width, canvas.height);
+    
+    // Convert to file and upload
+    canvas.toBlob((blob) => {
+        const file = new File([blob], "camera_snap.jpg", { type: "image/jpeg" });
+        uploadFile(file);
+        stopCamera(); // Close after taking photo
+    }, "image/jpeg", 0.8);
+}
+
+el.btnCam.onclick = startCamera;
+el.closeCam.onclick = stopCamera;
+el.shutter.onclick = takePhoto;
 
 // --- POOL GAME ---
 let poolGame = null;
@@ -95,7 +155,6 @@ el.btnGame.onclick = () => {
     poolGame.setupNewGame();
     resetIdleTimer();
 };
-
 el.closeGame.onclick = () => { el.modal.style.display = 'none'; };
 
 function openGameFromChat(gameData, isMyTurn) {
@@ -134,7 +193,6 @@ function renderMessage(msg) {
         bubble.className = "message";
         if(isMe) bubble.style.backgroundColor = msg.user_color || "#3797f0";
         else bubble.style.backgroundColor = "#262626";
-
         bubble.innerHTML = msg.content; 
         
         if (msg.content && msg.content.length > 1 && msg.content === msg.content.toUpperCase() && /[A-Z]/.test(msg.content)) {
@@ -147,7 +205,7 @@ function renderMessage(msg) {
     el.msgs.scrollTop = el.msgs.scrollHeight;
 }
 
-// --- IDLE & PRESENCE (STORIES STYLE) ---
+// --- PRESENCE & IDLE ---
 const channel = _supabase.channel('room1');
 let idleTimeout;
 let myStatus = 'online'; 
@@ -157,7 +215,7 @@ async function updateStatus(status) {
     await channel.track({ 
         user: myName, 
         status: status,
-        color: myColor, // SEND COLOR
+        color: myColor,
         online_at: new Date().toISOString() 
     });
 }
@@ -172,12 +230,9 @@ channel
     .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState();
         const users = Object.values(state).flat();
-        
-        // De-duplicate users
         const uniqueUsers = {};
         users.forEach(u => uniqueUsers[u.user] = u);
 
-        // Render Stories
         el.activeInd.innerHTML = "";
         
         Object.values(uniqueUsers).forEach(u => {
@@ -185,7 +240,6 @@ channel
             const userColor = u.color || "#555";
             const initial = u.user.charAt(0).toUpperCase();
             
-            // Create Story Item
             const story = document.createElement('div');
             story.className = 'story-item';
             
