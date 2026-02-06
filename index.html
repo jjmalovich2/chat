@@ -29,25 +29,27 @@
         .sent .message { border-bottom-right-radius: 4px; }
         .received .message { border-bottom-left-radius: 4px; background: #262626; color: #fff; }
         
-        /* --- SCREAM ANIMATION (FIXED) --- */
+        /* --- SCREAM ANIMATION (BIGGER & BOLDER) --- */
         .scream {
             font-weight: 900 !important; /* Stays bold forever */
             letter-spacing: 1px;
             animation: scream-pop 0.6s ease-out;
-            z-index: 100; /* Ensure it pops over other things */
+            z-index: 100;
+            position: relative; /* Helps z-index work */
         }
         
-        /* ANCHOR POINTS: Prevents clipping off-screen */
-        .sent .scream { transform-origin: right center; }     /* Grows to the Left */
-        .received .scream { transform-origin: left center; }  /* Grows to the Right */
+        /* ANCHOR POINTS: Grow into the screen */
+        .sent .scream { transform-origin: right center; }     
+        .received .scream { transform-origin: left center; }
 
         @keyframes scream-pop {
             0% { transform: scale(1); }
-            20% { transform: scale(1.25) rotate(-2deg); } /* Peak size (1.25x) */
-            40% { transform: scale(1.25) rotate(2deg); }  /* Shake at peak */
-            60% { transform: scale(1.25) rotate(-1deg); }
+            /* Increased to 1.55x size */
+            20% { transform: scale(1.55) rotate(-3deg); } 
+            40% { transform: scale(1.55) rotate(3deg); }
+            60% { transform: scale(1.55) rotate(-2deg); }
             80% { transform: scale(1.1); }
-            100% { transform: scale(1); }   /* Return to normal size */
+            100% { transform: scale(1); }   
         }
 
         /* IMAGES */
