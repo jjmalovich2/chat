@@ -29,20 +29,24 @@
         .sent .message { border-bottom-right-radius: 4px; }
         .received .message { border-bottom-left-radius: 4px; background: #262626; color: #fff; }
         
-        /* --- SCREAM EFFECT (New) --- */
+        /* --- SCREAM ANIMATION (UPDATED) --- */
         .scream {
-            font-size: 24px !important;
-            font-weight: 900 !important;
+            font-weight: 900 !important; /* Always bold */
             letter-spacing: 1px;
-            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
-            padding: 15px 20px; /* Bigger padding for bigger text */
+            /* The animation grows it, shakes it, then shrinks it back */
+            animation: scream-pop 0.7s ease-out;
+            transform-origin: center;
         }
         
-        @keyframes shake {
-            10%, 90% { transform: translate3d(-1px, 0, 0); }
-            20%, 80% { transform: translate3d(2px, 0, 0); }
-            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
-            40%, 60% { transform: translate3d(4px, 0, 0); }
+        @keyframes scream-pop {
+            0% { transform: scale(1); }
+            15% { transform: scale(1.5); }  /* Grow Huge */
+            20% { transform: scale(1.5) rotate(-4deg); } /* Shake while huge */
+            30% { transform: scale(1.5) rotate(4deg); }
+            40% { transform: scale(1.5) rotate(-4deg); }
+            50% { transform: scale(1.5) rotate(4deg); }
+            60% { transform: scale(1.5); }
+            100% { transform: scale(1); }   /* Return to normal size */
         }
 
         /* IMAGES */
