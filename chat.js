@@ -74,12 +74,26 @@ el.closeReply.onclick = clearReply;
 // --- MESSAGING ---
 async function sendMessage(content, type = 'text') {
     let finalContent = content;
+    
+    // Prepare reply data
+    let replyText = null;
+    let replySender = null;
+
+    if (replyingTo) {
+        replySender = replyingTo.sender;
+        if (replyingTo.message_type === 'image') replyText = "📷 Photo";
+        else if (replyingTo.message_type === 'game_pool') replyText = "🎱 8-Ball Pool";
+        else replyText = replyingTo.content;
+    }
+
     const payload = {
         sender: myName,
         content: finalContent,
         message_type: type,
         user_color: myColor,
-        liked_by: []
+        liked_by: [],
+        reply_to_text: replyText,
+        reply_to_sender: replySender
     };
     
     await _supabase.from("messages").insert([payload]);
@@ -177,7 +191,6 @@ function openGameFromChat(gameData, isMyTurn) {
 }
 
 // --- MESSAGE RENDERING ---
-// --- MESSAGE RENDERING ---
 function renderMessage(msg) {
     const isMe = msg.sender === myName;
     const row = document.createElement("div");
@@ -192,11 +205,24 @@ function renderMessage(msg) {
     const bubble = document.createElement("div");
     bubble.dataset.id = msg.id;
     
-    // --- CONTENT RENDERING ---
+    // 1. RENDER REPLY CONTEXT
+    if (msg.reply_to_text) {
+        const replyBox = document.createElement("div");
+        replyBox.className = "reply-context";
+        replyBox.innerHTML = `
+            <span class="reply-sender-name">${msg.reply_to_sender}</span>
+            <span class="reply-preview-text">${msg.reply_to_text}</span>
+        `;
+        bubble.appendChild(replyBox);
+    }
+    
+    // 2. RENDER MAIN CONTENT
     if(msg.message_type === 'game_pool') {
         bubble.className = "message game-bubble";
-        bubble.innerHTML = `<span class="game-icon">🎱</span><span class="game-text">${isMe?"Played":"Your Turn"}</span>`;
-        bubble.onclick = () => openGameFromChat(JSON.parse(msg.content), !isMe);
+        bubble.innerHTML += `<span class="game-icon">🎱</span><span class="game-text">${isMe?"Played":"Your Turn"}</span>`;
+        bubble.onclick = (e) => {
+            if(!e.target.closest('.reply-context')) openGameFromChat(JSON.parse(msg.content), !isMe);
+        };
     } 
     else if (msg.message_type === 'image') {
         bubble.className = "message";
@@ -204,7 +230,6 @@ function renderMessage(msg) {
         
         const img = document.createElement('img');
         img.src = msg.content;
-        // Fix scroll on image load
         img.onload = () => { el.msgs.scrollTop = el.msgs.scrollHeight; };
         bubble.appendChild(img);
     }
@@ -212,7 +237,10 @@ function renderMessage(msg) {
         bubble.className = "message";
         if(isMe) bubble.style.backgroundColor = msg.user_color || "#3797f0";
         else bubble.style.backgroundColor = "#262626";
-        bubble.innerHTML = msg.content; 
+        
+        const textSpan = document.createElement("div");
+        textSpan.innerHTML = msg.content;
+        bubble.appendChild(textSpan);
         
         if (msg.content && msg.content.length > 1 && msg.content === msg.content.toUpperCase() && /[A-Z]/.test(msg.content)) {
             bubble.classList.add('scream');
@@ -234,7 +262,6 @@ function renderMessage(msg) {
     // --- DOUBLE CLICK LIKE ---
     bubble.addEventListener('dblclick', async (e) => {
         e.stopPropagation(); e.preventDefault();
-        // ... (Keep your existing Like logic here, or ask me to paste it if lost) ...
         const { data: currentMsg } = await _supabase.from('messages').select('liked_by').eq('id', msg.id).single();
         let currentLikes = currentMsg ? (currentMsg.liked_by || []) : [];
         const wasLiked = currentLikes.includes(myName);
@@ -243,70 +270,65 @@ function renderMessage(msg) {
             newLikes = currentLikes.filter(name => name !== myName);
             const oldBadge = bubble.querySelector('.liked-badge');
             if(oldBadge) oldBadge.remove();
+            
+            const container = document.createElement('div');
+            container.className = 'broken-heart-svg';
+            container.innerHTML = `
+                <svg viewBox="0 0 32 32" width="100%" height="100%">
+                    <path class="heart-shard left-shard" d="M16,6 L13,10 L16,15 L13,20 L16,29 C6,29 2,22 2,12 C2,6 7,2 12,2 C14.5,2 16,4 16,6 Z" />
+                    <path class="heart-shard right-shard" d="M16,6 L13,10 L16,15 L13,20 L16,29 C26,29 30,22 30,12 C30,6 25,2 20,2 C17.5,2 16,4 16,6 Z" />
+                </svg>
+            `;
+            bubble.appendChild(container);
+            setTimeout(() => container.remove(), 800);
             bubble.dataset.liked = "false";
         } else {
             newLikes = [...currentLikes, myName];
-            const badge = document.createElement('div');
-            badge.className = 'liked-badge';
-            badge.innerHTML = '❤️';
-            bubble.appendChild(badge);
-            bubble.dataset.liked = "true";
-            
-            // Pop Animation
+            const oldBadge = bubble.querySelector('.liked-badge');
+            if(oldBadge) oldBadge.remove();
             const heart = document.createElement('div');
             heart.className = 'heart-pop';
             heart.innerHTML = '❤️';
             bubble.appendChild(heart);
             setTimeout(() => heart.remove(), 800);
+            const badge = document.createElement('div');
+            badge.className = 'liked-badge';
+            badge.innerHTML = '❤️';
+            bubble.appendChild(badge);
+            bubble.dataset.liked = "true";
         }
         await _supabase.from("messages").update({ liked_by: newLikes }).eq("id", msg.id);
     });
 
-    // ==============================================
-    //     UNIVERSAL SWIPE LOGIC (MOUSE + TOUCH)
-    // ==============================================
-    
+    // --- SWIPE LOGIC (Mouse + Touch) ---
     let startX = 0;
     let currentX = 0;
     let isDragging = false;
     
-    // Helper to start the drag
     const startDrag = (x) => {
-        startX = x;
-        currentX = x;
-        isDragging = true;
-        bubble.style.transition = 'none'; // Remove lag
+        startX = x; currentX = x; isDragging = true;
+        bubble.style.transition = 'none'; 
     };
 
-    // Helper to move
     const moveDrag = (x, e) => {
         if (!isDragging) return;
         currentX = x;
         const diff = currentX - startX;
         const absDiff = Math.abs(diff);
 
-        // LOGIC: 
-        // If I am sender -> Drag Left (Diff < 0)
-        // If I am receiver -> Drag Right (Diff > 0)
-        
         let translate = 0;
-
-        if (isMe) {
-            // Dragging LEFT
+        if (isMe) { // Me -> Drag Left
             if (diff < 0) {
-                // If it's a mouse/touch, prevent page scroll/selection
                 if(e.cancelable && absDiff > 5) e.preventDefault(); 
-                translate = Math.max(diff, -100); // Limit distance
+                translate = Math.max(diff, -100); 
             }
-        } else {
-            // Dragging RIGHT
+        } else { // Them -> Drag Right
             if (diff > 0) {
                 if(e.cancelable && absDiff > 5) e.preventDefault();
-                translate = Math.min(diff, 100); // Limit distance
+                translate = Math.min(diff, 100);
             }
         }
 
-        // Apply visual
         if (translate !== 0) {
             bubble.style.transform = `translateX(${translate}px)`;
             const progress = Math.min(Math.abs(translate) / 60, 1);
@@ -315,17 +337,14 @@ function renderMessage(msg) {
         }
     };
 
-    // Helper to end
     const endDrag = () => {
         if (!isDragging) return;
         isDragging = false;
-        
         const diff = currentX - startX;
         bubble.style.transition = 'transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)';
         bubble.style.transform = `translateX(0px)`;
         replyIcon.style.opacity = 0;
 
-        // Threshold to trigger reply
         if (Math.abs(diff) > 50) { 
             if ((isMe && diff < -30) || (!isMe && diff > 30)) {
                 if(navigator.vibrate) navigator.vibrate(10);
@@ -334,19 +353,13 @@ function renderMessage(msg) {
         }
     };
 
-    // --- MOUSE EVENTS (Desktop) ---
+    // Events
     bubble.addEventListener('mousedown', (e) => startDrag(e.clientX));
-    window.addEventListener('mousemove', (e) => moveDrag(e.clientX, e)); // Listen on window to catch fast drags
+    window.addEventListener('mousemove', (e) => moveDrag(e.clientX, e));
     window.addEventListener('mouseup', endDrag);
 
-    // --- TOUCH EVENTS (Mobile) ---
     bubble.addEventListener('touchstart', (e) => startDrag(e.touches[0].clientX), {passive: true});
-    
-    bubble.addEventListener('touchmove', (e) => {
-        // We only care about X for the logic, but we need to check if user is scrolling page
-        moveDrag(e.touches[0].clientX, e);
-    }, {passive: false}); // passive: false allows us to block scrolling
-    
+    bubble.addEventListener('touchmove', (e) => moveDrag(e.touches[0].clientX, e), {passive: false});
     bubble.addEventListener('touchend', endDrag);
 
     row.appendChild(bubble);
