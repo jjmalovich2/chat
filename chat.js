@@ -27,13 +27,11 @@ const el = {
     btnCam: document.getElementById("camBtn"),
     btnGame: document.getElementById("newGameBtn"),
     
-    // Game Modal
+    // Modals
     modal: document.getElementById("gameModal"),
     closeGame: document.getElementById("closeGameBtn"),
     statusTitle: document.getElementById("statusTitle"),
     statusSub: document.getElementById("statusSub"),
-    
-    // Camera Modal
     camModal: document.getElementById("cameraModal"),
     camView: document.getElementById("cameraView"),
     shutter: document.getElementById("shutterBtn"),
@@ -55,7 +53,8 @@ async function sendMessage(content, type = 'text') {
         sender: myName,
         content: content,
         message_type: type,
-        user_color: myColor
+        user_color: myColor,
+        is_liked: false
     };
     await _supabase.from("messages").insert([payload]);
     if (type === 'text') el.input.value = "";
@@ -65,7 +64,7 @@ async function sendMessage(content, type = 'text') {
 el.send.onclick = () => { if(el.input.value.trim()) sendMessage(el.input.value.trim()); };
 el.input.onkeydown = (e) => { if(e.key==="Enter" && el.input.value.trim()) sendMessage(el.input.value.trim()); };
 
-// --- FILE UPLOADS (Gallery) ---
+// --- FILE UPLOADS & CAMERA ---
 async function uploadFile(file) {
     if(!file) return;
     const fileName = `${Date.now()}_${file.name ? file.name.replace(/\s/g,'_') : 'cam_photo.jpg'}`;
@@ -78,52 +77,33 @@ async function uploadFile(file) {
 el.btnImg.onclick = () => el.file.click();
 el.file.onchange = (e) => uploadFile(e.target.files[0]);
 
-// --- CAMERA (Live Stream) ---
 let stream = null;
-
 async function startCamera() {
     try {
         el.camModal.style.display = 'flex';
-        // Request camera (prefer front-facing/user)
-        stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { facingMode: "user" }, 
-            audio: false 
-        });
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
         el.camView.srcObject = stream;
     } catch (err) {
-        alert("Could not access camera. Ensure permissions are allowed.");
+        alert("Camera error: " + err.message);
         el.camModal.style.display = 'none';
     }
 }
-
 function stopCamera() {
-    if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-        stream = null;
-    }
+    if (stream) { stream.getTracks().forEach(track => track.stop()); stream = null; }
     el.camModal.style.display = 'none';
 }
-
 function takePhoto() {
     if (!stream) return;
-    
-    // Create a canvas to capture the frame
     const canvas = document.createElement("canvas");
     canvas.width = el.camView.videoWidth;
     canvas.height = el.camView.videoHeight;
     const ctx = canvas.getContext("2d");
-    
-    // Flip horizontally if using front cam (to match preview)
-    ctx.translate(canvas.width, 0);
-    ctx.scale(-1, 1);
-    
+    ctx.translate(canvas.width, 0); ctx.scale(-1, 1);
     ctx.drawImage(el.camView, 0, 0, canvas.width, canvas.height);
-    
-    // Convert to file and upload
     canvas.toBlob((blob) => {
         const file = new File([blob], "camera_snap.jpg", { type: "image/jpeg" });
         uploadFile(file);
-        stopCamera(); // Close after taking photo
+        stopCamera();
     }, "image/jpeg", 0.8);
 }
 
@@ -178,7 +158,10 @@ function renderMessage(msg) {
     row.className = `message-row ${isMe ? "sent" : "received"}`;
     
     const bubble = document.createElement("div");
-    
+    bubble.dataset.id = msg.id; // Store ID for liking
+    bubble.dataset.liked = msg.is_liked ? "true" : "false";
+
+    // 1. CONTENT
     if(msg.message_type === 'game_pool') {
         bubble.className = "message game-bubble";
         bubble.innerHTML = `<span class="game-icon">🎱</span><span class="game-text">${isMe?"Played":"Your Turn"}</span>`;
@@ -199,25 +182,83 @@ function renderMessage(msg) {
             bubble.classList.add('scream');
         }
     }
+
+    // 2. LIKE BADGE (If exists)
+    if(msg.is_liked) {
+        const badge = document.createElement('div');
+        badge.className = 'liked-badge';
+        badge.innerHTML = '❤️';
+        bubble.appendChild(badge);
+    }
+
+    // 3. DOUBLE CLICK TO LIKE
+    bubble.addEventListener('dblclick', async (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        
+        const currentLiked = bubble.dataset.liked === "true";
+        const newLiked = !currentLiked;
+
+        // Optimistic UI Update (Instant Visual)
+        bubble.dataset.liked = newLiked;
+        
+        // Remove existing badge
+        const oldBadge = bubble.querySelector('.liked-badge');
+        if(oldBadge) oldBadge.remove();
+
+        if (newLiked) {
+            // Add Badge
+            const badge = document.createElement('div');
+            badge.className = 'liked-badge';
+            badge.innerHTML = '❤️';
+            bubble.appendChild(badge);
+
+            // Pop Animation
+            const heart = document.createElement('div');
+            heart.className = 'heart-pop';
+            heart.innerHTML = '❤️';
+            bubble.appendChild(heart);
+            setTimeout(() => heart.remove(), 800);
+        }
+
+        // Database Update
+        await _supabase.from("messages").update({ is_liked: newLiked }).eq("id", msg.id);
+    });
     
     row.appendChild(bubble);
     el.msgs.appendChild(row);
     el.msgs.scrollTop = el.msgs.scrollHeight;
 }
 
-// --- PRESENCE & IDLE ---
+// --- UPDATE HANDLER (For Realtime Likes) ---
+function updateMessageUI(updatedMsg) {
+    // Find the bubble
+    const bubble = document.querySelector(`.message[data-id="${updatedMsg.id}"]`);
+    if(!bubble) return;
+
+    bubble.dataset.liked = updatedMsg.is_liked ? "true" : "false";
+
+    // Remove existing badge
+    const oldBadge = bubble.querySelector('.liked-badge');
+    if(oldBadge) oldBadge.remove();
+
+    // Add new badge if liked
+    if (updatedMsg.is_liked) {
+        const badge = document.createElement('div');
+        badge.className = 'liked-badge';
+        badge.innerHTML = '❤️';
+        bubble.appendChild(badge);
+    }
+}
+
+// --- PRESENCE & SYNC ---
 const channel = _supabase.channel('room1');
 let idleTimeout;
 let myStatus = 'online'; 
 
 async function updateStatus(status) {
     myStatus = status;
-    await channel.track({ 
-        user: myName, 
-        status: status,
-        color: myColor,
-        online_at: new Date().toISOString() 
-    });
+    await channel.track({ user: myName, status: status, color: myColor, online_at: new Date().toISOString() });
 }
 
 function resetIdleTimer() {
@@ -253,7 +294,9 @@ channel
             el.activeInd.appendChild(story);
         });
     })
+    // LISTEN FOR BOTH INSERTS AND UPDATES
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, p => renderMessage(p.new))
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' }, p => updateMessageUI(p.new))
     .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
             updateStatus('online');
