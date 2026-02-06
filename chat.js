@@ -12,7 +12,6 @@ if (!myName) {
     myName = prompt("Enter your name:") || "Guest";
     localStorage.setItem("chat-user", myName);
 }
-// Default to blue if no color is picked yet
 let myColor = localStorage.getItem("chat-color") || "#3797f0";
 
 // --- DOM ELEMENTS ---
@@ -33,14 +32,13 @@ const el = {
     activeInd: document.getElementById("activeIndicator")
 };
 
-// Set initial color
 el.color.value = myColor;
 el.color.addEventListener("change", (e) => {
     myColor = e.target.value;
     localStorage.setItem("chat-color", myColor);
 });
 
-// --- MESSAGING FUNCTIONS ---
+// --- MESSAGING ---
 
 async function sendMessage(content, type = 'text') {
     const payload = {
@@ -56,22 +54,12 @@ async function sendMessage(content, type = 'text') {
 el.send.onclick = () => { if(el.input.value.trim()) sendMessage(el.input.value.trim()); };
 el.input.onkeydown = (e) => { if(e.key==="Enter" && el.input.value.trim()) sendMessage(el.input.value.trim()); };
 
-// --- FILE UPLOADS ---
-
+// --- UPLOADS (chat-images) ---
 async function uploadFile(file) {
     if(!file) return;
     const fileName = `${Date.now()}_${file.name.replace(/\s/g,'_')}`;
-    
-    // Upload to 'chat-images'
     const { data, error } = await _supabase.storage.from('chat-images').upload(fileName, file);
-    
-    if(error) {
-        console.error("Upload Error:", error);
-        alert("Upload Failed. Check Supabase bucket permissions.");
-        return;
-    }
-    
-    // Get URL
+    if(error) { alert("Upload Failed: " + error.message); return; }
     const { data: publicData } = _supabase.storage.from('chat-images').getPublicUrl(fileName);
     sendMessage(publicData.publicUrl, 'image');
 }
@@ -81,9 +69,7 @@ el.file.onchange = (e) => uploadFile(e.target.files[0]);
 el.btnCam.onclick = () => el.cam.click();
 el.cam.onchange = (e) => uploadFile(e.target.files[0]);
 
-
-// --- POOL GAME LOGIC ---
-
+// --- POOL GAME ---
 let poolGame = null;
 
 function initPool() {
@@ -124,8 +110,7 @@ function openGameFromChat(gameData, isMyTurn) {
     }
 }
 
-// --- RENDER (FIXED FOR LEGACY MESSAGES) ---
-
+// --- RENDER ---
 function renderMessage(msg) {
     const isMe = msg.sender === myName;
     const row = document.createElement("div");
@@ -133,43 +118,34 @@ function renderMessage(msg) {
     
     const bubble = document.createElement("div");
     
-    // 1. GAME BUBBLE
+    // 1. POOL GAME
     if(msg.message_type === 'game_pool') {
         bubble.className = "message game-bubble";
         bubble.innerHTML = `<span class="game-icon">🎱</span><span class="game-text">${isMe?"Played":"Your Turn"}</span>`;
-        bubble.onclick = () => {
-            try {
-                const data = JSON.parse(msg.content);
-                openGameFromChat(data, !isMe);
-            } catch(e) { console.error(e); }
-        };
+        bubble.onclick = () => openGameFromChat(JSON.parse(msg.content), !isMe);
     } 
-    // 2. IMAGE BUBBLE
+    // 2. IMAGES
     else if (msg.message_type === 'image') {
         bubble.className = "message";
-        // Only apply color if it exists
         if(isMe && msg.user_color) bubble.style.backgroundColor = msg.user_color;
-        
-        const img = document.createElement("img");
-        img.src = msg.content;
-        img.onload = () => { el.msgs.scrollTop = el.msgs.scrollHeight; };
-        bubble.appendChild(img);
+        bubble.innerHTML = `<img src="${msg.content}" onload="this.parentNode.parentNode.scrollIntoView()" />`;
     }
-    // 3. TEXT BUBBLE (With Legacy HTML Support)
+    // 3. TEXT (w/ SCREAM CHECK)
     else {
         bubble.className = "message";
-        
-        // Fix for missing colors on old messages
-        if(isMe) {
-            bubble.style.backgroundColor = msg.user_color ? msg.user_color : "#3797f0"; // Default Blue
-        } else {
-            // Received messages are always dark gray
-            bubble.style.backgroundColor = "#262626"; 
-        }
+        if(isMe) bubble.style.backgroundColor = msg.user_color || "#3797f0";
+        else bubble.style.backgroundColor = "#262626";
 
-        // FIX FOR THE SCREENSHOT PROBLEM:
-        // Use innerHTML so old <img> tags stored as text will render as images
-        bubble.innerHTML = msg.content;
+        bubble.innerHTML = msg.content; // Use innerHTML for old messages
+        
+        // CHECK FOR SCREAM (All Caps & Length > 1)
+        // e.g. "HELLO" or "OMG"
+        if (msg.content && msg.content.length > 1 && msg.content === msg.content.toUpperCase()) {
+            // Check if it actually contains letters (not just "???")
+            if (/[A-Z]/.test(msg.content)) {
+                bubble.classList.add('scream');
+            }
+        }
     }
     
     row.appendChild(bubble);
@@ -177,9 +153,7 @@ function renderMessage(msg) {
     el.msgs.scrollTop = el.msgs.scrollHeight;
 }
 
-
-// --- REALTIME & HISTORY ---
-
+// --- SYNC ---
 const channel = _supabase.channel('room1');
 channel
     .on('presence', { event: 'sync' }, () => {
@@ -190,9 +164,7 @@ channel
     })
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, p => renderMessage(p.new))
     .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-            await channel.track({ user: myName, online_at: new Date().toISOString() });
-        }
+        if (status === 'SUBSCRIBED') await channel.track({ user: myName, online_at: new Date().toISOString() });
     });
 
 async function fetchHistory() {
