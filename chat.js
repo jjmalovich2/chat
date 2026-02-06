@@ -49,7 +49,7 @@ async function sendMessage(content, type = 'text') {
         content: content,
         message_type: type,
         user_color: myColor,
-        liked_by: [] // Initialize empty array for new messages
+        liked_by: [] 
     };
     await _supabase.from("messages").insert([payload]);
     if (type === 'text') el.input.value = "";
@@ -151,8 +151,6 @@ function renderMessage(msg) {
     const row = document.createElement("div");
     row.className = `message-row ${isMe ? "sent" : "received"}`;
     
-    // Check if I liked this message
-    // msg.liked_by is an array, e.g., ["Ava", "JJ"]
     const likesList = msg.liked_by || [];
     const isLikedByMe = likesList.includes(myName);
 
@@ -160,7 +158,6 @@ function renderMessage(msg) {
     bubble.dataset.id = msg.id;
     bubble.dataset.liked = isLikedByMe ? "true" : "false";
 
-    // Content Handling
     if(msg.message_type === 'game_pool') {
         bubble.className = "message game-bubble";
         bubble.innerHTML = `<span class="game-icon">🎱</span><span class="game-text">${isMe?"Played":"Your Turn"}</span>`;
@@ -182,7 +179,6 @@ function renderMessage(msg) {
         }
     }
 
-    // Initial Badge Render
     if(isLikedByMe) {
         const badge = document.createElement('div');
         badge.className = 'liked-badge';
@@ -190,55 +186,64 @@ function renderMessage(msg) {
         bubble.appendChild(badge);
     }
 
-    // --- DOUBLE CLICK HANDLER (Array Logic) ---
+    // --- DOUBLE CLICK HANDLER ---
     bubble.addEventListener('dblclick', async (e) => {
         e.stopPropagation();
         e.preventDefault();
         
-        // 1. Fetch latest state to ensure we don't overwrite others' likes
         const { data: currentMsg } = await _supabase
             .from('messages')
             .select('liked_by')
             .eq('id', msg.id)
             .single();
 
-        let currentLikes = currentMsg.liked_by || [];
+        let currentLikes = currentMsg ? (currentMsg.liked_by || []) : [];
         const wasLiked = currentLikes.includes(myName);
         
-        // 2. Toggle Logic
         let newLikes;
         if (wasLiked) {
-            // Remove name
+            // UNLIKE -> BREAKING ANIMATION
             newLikes = currentLikes.filter(name => name !== myName);
+            
+            const oldBadge = bubble.querySelector('.liked-badge');
+            if(oldBadge) oldBadge.remove();
+
+            // Insert SVG Heart that splits
+            const container = document.createElement('div');
+            container.className = 'broken-heart-svg';
+            // Custom SVG paths that form a heart with a jagged crack in the middle
+            container.innerHTML = `
+                <svg viewBox="0 0 32 32" width="100%" height="100%">
+                    <path class="heart-shard left-shard" d="M16,6 L13,10 L16,15 L13,20 L16,29 C6,29 2,22 2,12 C2,6 7,2 12,2 C14.5,2 16,4 16,6 Z" />
+                    <path class="heart-shard right-shard" d="M16,6 L13,10 L16,15 L13,20 L16,29 C26,29 30,22 30,12 C30,6 25,2 20,2 C17.5,2 16,4 16,6 Z" />
+                </svg>
+            `;
+            bubble.appendChild(container);
+            setTimeout(() => container.remove(), 800);
+
+            bubble.dataset.liked = "false";
+
         } else {
-            // Add name
+            // LIKE -> FLYING ANIMATION
             newLikes = [...currentLikes, myName];
-        }
+            
+            const oldBadge = bubble.querySelector('.liked-badge');
+            if(oldBadge) oldBadge.remove();
 
-        // 3. Optimistic UI (Fast response)
-        const oldBadge = bubble.querySelector('.liked-badge');
-        if(oldBadge) oldBadge.remove();
-
-        if (!wasLiked) { // We just liked it
-            // Play Animation
             const heart = document.createElement('div');
             heart.className = 'heart-pop';
             heart.innerHTML = '❤️';
             bubble.appendChild(heart);
-            setTimeout(() => heart.remove(), 800); // Cleanup
+            setTimeout(() => heart.remove(), 800);
 
-            // Add Badge
             const badge = document.createElement('div');
             badge.className = 'liked-badge';
             badge.innerHTML = '❤️';
             bubble.appendChild(badge);
             
             bubble.dataset.liked = "true";
-        } else {
-            bubble.dataset.liked = "false";
         }
 
-        // 4. Save to DB
         await _supabase.from("messages").update({ liked_by: newLikes }).eq("id", msg.id);
     });
     
@@ -255,18 +260,17 @@ function updateMessageUI(updatedMsg) {
     const likesList = updatedMsg.liked_by || [];
     const isLikedByMe = likesList.includes(myName);
 
-    bubble.dataset.liked = isLikedByMe ? "true" : "false";
-
-    // Remove old badge
-    const oldBadge = bubble.querySelector('.liked-badge');
-    if(oldBadge) oldBadge.remove();
-
-    // Add new badge if liked by ME
-    if (isLikedByMe) {
+    if (bubble.dataset.liked === "true" && !isLikedByMe) {
+        const oldBadge = bubble.querySelector('.liked-badge');
+        if(oldBadge) oldBadge.remove();
+        bubble.dataset.liked = "false";
+    } 
+    else if (bubble.dataset.liked === "false" && isLikedByMe) {
         const badge = document.createElement('div');
         badge.className = 'liked-badge';
         badge.innerHTML = '❤️';
         bubble.appendChild(badge);
+        bubble.dataset.liked = "true";
     }
 }
 
