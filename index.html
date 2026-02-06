@@ -46,12 +46,13 @@
         /* MESSAGES */
         #messages { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 6px; }
         
-        /* Message Row - Relative for icon positioning */
+        /* Message Row - Fixed for Overlap */
         .message-row { 
             display: flex; width: 100%; margin-bottom: 2px; 
             position: relative; 
             min-height: 40px;
             align-items: center;
+            flex-shrink: 0; /* PREVENTS CRUSHING/OVERLAP */
         }
         .sent { justify-content: flex-end; }
         .received { justify-content: flex-start; }
@@ -60,24 +61,23 @@
         .reply-icon-swiping {
             position: absolute;
             top: 50%;
-            margin-top: -10px; /* Half of font-size roughly to center */
+            margin-top: -10px; 
             font-size: 20px;
             color: #555;
             opacity: 0;
             z-index: 1;
             pointer-events: none;
         }
-        /* Icon Positioning logic */
-        .sent .reply-icon-swiping { right: 5px; } /* Own message: Icon on right */
-        .received .reply-icon-swiping { left: 5px; } /* Their message: Icon on left */
+        .sent .reply-icon-swiping { right: 5px; } 
+        .received .reply-icon-swiping { left: 5px; } 
 
         /* BUBBLES */
         .message { 
             padding: 10px 15px; border-radius: 20px; max-width: 75%; font-size: 15px; 
             position: relative; word-wrap: break-word; user-select: none; 
-            z-index: 2; /* Sit above the reply icon */
-            transition: transform 0.1s linear; /* Smooth drag */
-            touch-action: pan-y; /* Allow vertical scroll, handle horizontal in JS */
+            z-index: 2; 
+            transition: transform 0.1s linear; 
+            touch-action: pan-y; 
         }
         .sent .message { border-bottom-right-radius: 4px; }
         .received .message { border-bottom-left-radius: 4px; background: #262626; color: #fff; }
