@@ -177,6 +177,7 @@ function openGameFromChat(gameData, isMyTurn) {
 }
 
 // --- MESSAGE RENDERING ---
+// --- MESSAGE RENDERING ---
 function renderMessage(msg) {
     const isMe = msg.sender === myName;
     const row = document.createElement("div");
@@ -203,9 +204,8 @@ function renderMessage(msg) {
         
         const img = document.createElement('img');
         img.src = msg.content;
-        img.onload = () => {
-            el.msgs.scrollTop = el.msgs.scrollHeight;
-        };
+        // Fix scroll on image load
+        img.onload = () => { el.msgs.scrollTop = el.msgs.scrollHeight; };
         bubble.appendChild(img);
     }
     else {
@@ -234,6 +234,7 @@ function renderMessage(msg) {
     // --- DOUBLE CLICK LIKE ---
     bubble.addEventListener('dblclick', async (e) => {
         e.stopPropagation(); e.preventDefault();
+        // ... (Keep your existing Like logic here, or ask me to paste it if lost) ...
         const { data: currentMsg } = await _supabase.from('messages').select('liked_by').eq('id', msg.id).single();
         let currentLikes = currentMsg ? (currentMsg.liked_by || []) : [];
         const wasLiked = currentLikes.includes(myName);
@@ -242,120 +243,111 @@ function renderMessage(msg) {
             newLikes = currentLikes.filter(name => name !== myName);
             const oldBadge = bubble.querySelector('.liked-badge');
             if(oldBadge) oldBadge.remove();
-            
-            const container = document.createElement('div');
-            container.className = 'broken-heart-svg';
-            container.innerHTML = `
-                <svg viewBox="0 0 32 32" width="100%" height="100%">
-                    <path class="heart-shard left-shard" d="M16,6 L13,10 L16,15 L13,20 L16,29 C6,29 2,22 2,12 C2,6 7,2 12,2 C14.5,2 16,4 16,6 Z" />
-                    <path class="heart-shard right-shard" d="M16,6 L13,10 L16,15 L13,20 L16,29 C26,29 30,22 30,12 C30,6 25,2 20,2 C17.5,2 16,4 16,6 Z" />
-                </svg>
-            `;
-            bubble.appendChild(container);
-            setTimeout(() => container.remove(), 800);
             bubble.dataset.liked = "false";
         } else {
             newLikes = [...currentLikes, myName];
-            const oldBadge = bubble.querySelector('.liked-badge');
-            if(oldBadge) oldBadge.remove();
-            const heart = document.createElement('div');
-            heart.className = 'heart-pop';
-            heart.innerHTML = '❤️';
-            bubble.appendChild(heart);
-            setTimeout(() => heart.remove(), 800);
             const badge = document.createElement('div');
             badge.className = 'liked-badge';
             badge.innerHTML = '❤️';
             bubble.appendChild(badge);
             bubble.dataset.liked = "true";
+            
+            // Pop Animation
+            const heart = document.createElement('div');
+            heart.className = 'heart-pop';
+            heart.innerHTML = '❤️';
+            bubble.appendChild(heart);
+            setTimeout(() => heart.remove(), 800);
         }
         await _supabase.from("messages").update({ liked_by: newLikes }).eq("id", msg.id);
     });
 
-    // --- SWIPE TO REPLY LOGIC (ROBUST VERSION) ---
+    // ==============================================
+    //     UNIVERSAL SWIPE LOGIC (MOUSE + TOUCH)
+    // ==============================================
+    
     let startX = 0;
-    let startY = 0;
     let currentX = 0;
-    let isSwiping = false;
-    let isScrolling = false;
+    let isDragging = false;
+    
+    // Helper to start the drag
+    const startDrag = (x) => {
+        startX = x;
+        currentX = x;
+        isDragging = true;
+        bubble.style.transition = 'none'; // Remove lag
+    };
 
-    // 1. Touch Start: Initialize everything
-    bubble.addEventListener('touchstart', (e) => {
-        startX = e.touches[0].clientX;
-        startY = e.touches[0].clientY;
-        currentX = startX; // Reset currentX to start position!
-        isSwiping = false;
-        isScrolling = false;
-        bubble.style.transition = 'none'; 
-    }, {passive: true}); // Passive is OK here
-
-    // 2. Touch Move: Determine intent and lock
-    bubble.addEventListener('touchmove', (e) => {
-        currentX = e.touches[0].clientX;
-        const currentY = e.touches[0].clientY;
-        const diffX = currentX - startX;
-        const diffY = currentY - startY;
-        const absDiffX = Math.abs(diffX);
-        const absDiffY = Math.abs(diffY);
-
-        // DECIDE: Is user Scrolling or Swiping?
-        if (!isSwiping && !isScrolling) {
-            // If vertical movement is stronger, they are scrolling the list
-            if (absDiffY > absDiffX && absDiffY > 5) {
-                isScrolling = true;
-                return; // Let browser handle scroll
-            } 
-            // If horizontal movement is stronger, they are swiping the message
-            else if (absDiffX > absDiffY && absDiffX > 5) {
-                isSwiping = true;
-            }
-        }
-
-        // If locked into Swiping mode:
-        if (isSwiping) {
-            if(e.cancelable) e.preventDefault(); // STOP page scroll
-
-            // LOGIC: Sent (Me) -> Drag Left (Negative)
-            //        Received (Them) -> Drag Right (Positive)
-            
-            if (isMe) {
-                // Only allow LEFT drag for my messages
-                if (diffX < 0 && absDiffX < 150) {
-                    bubble.style.transform = `translateX(${diffX}px)`;
-                    replyIcon.style.opacity = Math.min(absDiffX / 60, 1);
-                    replyIcon.style.transform = `scale(${Math.min(absDiffX / 60, 1.2)})`;
-                }
-            } else {
-                // Only allow RIGHT drag for their messages
-                if (diffX > 0 && absDiffX < 150) {
-                    bubble.style.transform = `translateX(${diffX}px)`;
-                    replyIcon.style.opacity = Math.min(absDiffX / 60, 1);
-                    replyIcon.style.transform = `scale(${Math.min(absDiffX / 60, 1.2)})`;
-                }
-            }
-        }
-    }, {passive: false}); // MUST BE FALSE to allow preventDefault
-
-    // 3. Touch End: Snap back or Trigger Reply
-    bubble.addEventListener('touchend', (e) => {
-        if (!isSwiping) return; // If we were scrolling, ignore this
-        
-        isSwiping = false;
+    // Helper to move
+    const moveDrag = (x, e) => {
+        if (!isDragging) return;
+        currentX = x;
         const diff = currentX - startX;
+        const absDiff = Math.abs(diff);
+
+        // LOGIC: 
+        // If I am sender -> Drag Left (Diff < 0)
+        // If I am receiver -> Drag Right (Diff > 0)
         
-        bubble.style.transition = 'transform 0.2s ease-out';
+        let translate = 0;
+
+        if (isMe) {
+            // Dragging LEFT
+            if (diff < 0) {
+                // If it's a mouse/touch, prevent page scroll/selection
+                if(e.cancelable && absDiff > 5) e.preventDefault(); 
+                translate = Math.max(diff, -100); // Limit distance
+            }
+        } else {
+            // Dragging RIGHT
+            if (diff > 0) {
+                if(e.cancelable && absDiff > 5) e.preventDefault();
+                translate = Math.min(diff, 100); // Limit distance
+            }
+        }
+
+        // Apply visual
+        if (translate !== 0) {
+            bubble.style.transform = `translateX(${translate}px)`;
+            const progress = Math.min(Math.abs(translate) / 60, 1);
+            replyIcon.style.opacity = progress;
+            replyIcon.style.transform = `scale(${progress})`;
+        }
+    };
+
+    // Helper to end
+    const endDrag = () => {
+        if (!isDragging) return;
+        isDragging = false;
+        
+        const diff = currentX - startX;
+        bubble.style.transition = 'transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)';
         bubble.style.transform = `translateX(0px)`;
         replyIcon.style.opacity = 0;
 
-        // Trigger Reply if pulled far enough
-        if (Math.abs(diff) > 70) { 
-            // Ensure direction matches ownership
-            if ((isMe && diff < 0) || (!isMe && diff > 0)) {
+        // Threshold to trigger reply
+        if (Math.abs(diff) > 50) { 
+            if ((isMe && diff < -30) || (!isMe && diff > 30)) {
                 if(navigator.vibrate) navigator.vibrate(10);
                 setReply(msg);
             }
         }
-    });
+    };
+
+    // --- MOUSE EVENTS (Desktop) ---
+    bubble.addEventListener('mousedown', (e) => startDrag(e.clientX));
+    window.addEventListener('mousemove', (e) => moveDrag(e.clientX, e)); // Listen on window to catch fast drags
+    window.addEventListener('mouseup', endDrag);
+
+    // --- TOUCH EVENTS (Mobile) ---
+    bubble.addEventListener('touchstart', (e) => startDrag(e.touches[0].clientX), {passive: true});
+    
+    bubble.addEventListener('touchmove', (e) => {
+        // We only care about X for the logic, but we need to check if user is scrolling page
+        moveDrag(e.touches[0].clientX, e);
+    }, {passive: false}); // passive: false allows us to block scrolling
+    
+    bubble.addEventListener('touchend', endDrag);
 
     row.appendChild(bubble);
     el.msgs.appendChild(row);
