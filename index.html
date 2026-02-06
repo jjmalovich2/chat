@@ -52,7 +52,7 @@
             position: relative; 
             min-height: 40px;
             align-items: center;
-            flex-shrink: 0; /* PREVENTS CRUSHING/OVERLAP */
+            flex-shrink: 0; /* PREVENTS CRUSHING */
         }
         .sent { justify-content: flex-end; }
         .received { justify-content: flex-start; }
@@ -78,9 +78,28 @@
             z-index: 2; 
             transition: transform 0.1s linear; 
             touch-action: pan-y; 
+            display: flex; flex-direction: column; /* Needed for reply box stacking */
         }
         .sent .message { border-bottom-right-radius: 4px; }
         .received .message { border-bottom-left-radius: 4px; background: #262626; color: #fff; }
+
+        /* REPLY CONTEXT (The little box inside the message) */
+        .reply-context {
+            font-size: 11px;
+            margin-bottom: 6px;
+            background: rgba(0,0,0,0.15);
+            padding: 4px 8px;
+            border-radius: 6px;
+            border-left: 3px solid rgba(255,255,255,0.5);
+            display: flex;
+            flex-direction: column;
+            opacity: 0.9;
+            cursor: pointer;
+        }
+        .sent .reply-context { background: rgba(255,255,255,0.1); border-left-color: rgba(255,255,255,0.7); }
+        .received .reply-context { background: rgba(0,0,0,0.2); border-left-color: #3797f0; }
+        .reply-sender-name { font-weight: 700; margin-bottom: 1px; color: #ddd; }
+        .reply-preview-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; color: #bbb; }
         
         /* LIKE ANIMATIONS */
         .heart-pop {
