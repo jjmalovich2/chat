@@ -200,7 +200,14 @@ function renderMessage(msg) {
     else if (msg.message_type === 'image') {
         bubble.className = "message";
         if(isMe && msg.user_color) bubble.style.backgroundColor = msg.user_color;
-        bubble.innerHTML = `<img src="${msg.content}" onload="this.parentNode.parentNode.scrollIntoView()" />`;
+        
+        // FIXED: Image loading handler
+        const img = document.createElement('img');
+        img.src = msg.content;
+        img.onload = () => {
+            el.msgs.scrollTop = el.msgs.scrollHeight;
+        };
+        bubble.appendChild(img);
     }
     else {
         bubble.className = "message";
@@ -266,7 +273,7 @@ function renderMessage(msg) {
         await _supabase.from("messages").update({ liked_by: newLikes }).eq("id", msg.id);
     });
 
-    // --- SWIPE TO REPLY LOGIC (Updated for bidirectional) ---
+    // --- SWIPE TO REPLY LOGIC (Bidirectional) ---
     let startX = 0;
     let currentX = 0;
     let isSwiping = false;
