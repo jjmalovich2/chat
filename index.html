@@ -11,7 +11,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
-      /* --- CONFIG & DARK MODE --- */
+      /* --- DARK MODE CONFIG --- */
       :root {
         --insta-bg: #000000;
         --insta-gray: #262626;
@@ -42,7 +42,7 @@
         background: var(--insta-bg);
       }
 
-      /* --- HEADER --- */
+      /* --- Header --- */
       header {
         background: var(--insta-bg);
         border-bottom: 1px solid var(--insta-gray);
@@ -57,50 +57,7 @@
         padding-bottom: 10px;
       }
 
-      /* --- PINNED MESSAGES BAR --- */
-      #pinnedBar {
-        display: none; /* Hidden by default */
-        flex-direction: row;
-        justify-content: space-between;
-        padding: 10px 15px;
-        background: #121212;
-        border-bottom: 1px solid var(--insta-gray);
-        gap: 10px;
-      }
-      .pin-slot {
-        flex: 1;
-        background: #262626;
-        border-radius: 8px;
-        padding: 8px;
-        font-size: 12px;
-        display: flex;
-        flex-direction: column;
-        cursor: pointer;
-        position: relative;
-        overflow: hidden;
-      }
-      .pin-label {
-        font-weight: 700;
-        color: var(--time-text);
-        font-size: 10px;
-        margin-bottom: 2px;
-        text-transform: uppercase;
-      }
-      .pin-text {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        color: white;
-      }
-      .pin-icon {
-        position: absolute;
-        right: 5px;
-        top: 5px;
-        font-size: 10px;
-        opacity: 0.5;
-      }
-
-      /* --- ACTIVE LIST --- */
+      /* --- Active List --- */
       #activeList {
         display: flex;
         gap: 15px;
@@ -111,6 +68,7 @@
       #activeList::-webkit-scrollbar {
         display: none;
       }
+
       .user-status {
         display: flex;
         flex-direction: column;
@@ -164,6 +122,7 @@
         text-overflow: ellipsis;
         white-space: nowrap;
       }
+
       .user-status.idle {
         opacity: 0.5;
       }
@@ -198,7 +157,7 @@
         }
       }
 
-      /* --- MESSAGES --- */
+      /* --- Messages Area --- */
       #messages {
         flex: 1;
         overflow-y: auto;
@@ -215,6 +174,7 @@
         font-weight: 500;
         margin: 20px 0 10px 0;
       }
+
       .message-row {
         display: flex;
         width: 100%;
@@ -227,6 +187,7 @@
       .message-row.received {
         justify-content: flex-start;
       }
+
       .message {
         padding: 12px 18px;
         border-radius: 22px;
@@ -235,7 +196,7 @@
         line-height: 1.5;
         word-wrap: break-word;
         position: relative;
-        cursor: pointer;
+        cursor: grab;
         user-select: none;
         touch-action: pan-y;
         transform: translateX(0);
@@ -243,15 +204,21 @@
         display: flex;
         flex-direction: column;
         z-index: 2;
+        /* Default colors if none set */
         background-color: var(--msg-received);
         color: white;
       }
+      .message:active {
+        cursor: grabbing;
+      }
+
       .sent .message {
         border-bottom-right-radius: 4px;
       }
       .received .message {
         border-bottom-left-radius: 4px;
       }
+
       .message a {
         text-decoration: underline;
         word-break: break-all;
@@ -259,43 +226,7 @@
         color: inherit;
       }
 
-      /* --- CONTEXT MENU (LONG PRESS) --- */
-      #contextMenu {
-        position: fixed;
-        background: #333;
-        border-radius: 12px;
-        padding: 8px;
-        display: none;
-        flex-direction: column;
-        gap: 5px;
-        z-index: 200;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-        width: 150px;
-      }
-      #contextMenu button {
-        background: none;
-        border: none;
-        color: white;
-        padding: 10px;
-        text-align: left;
-        font-size: 16px;
-        border-radius: 8px;
-        cursor: pointer;
-      }
-      #contextMenu button:active {
-        background: #444;
-      }
-      #contextOverlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: 199;
-        display: none;
-      }
-
-      /* --- VISUALS & ANIMATIONS --- */
+      /* --- SCREAM LOGIC --- */
       .text-content {
         display: inline-block;
         transition: font-size 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -313,10 +244,35 @@
         10% {
           transform: translate(-4px, -4px) rotate(-3deg);
         }
+        20% {
+          transform: translate(-6px, 0px) rotate(3deg);
+        }
+        30% {
+          transform: translate(6px, 4px) rotate(0deg);
+        }
+        40% {
+          transform: translate(2px, -2px) rotate(2deg);
+        }
+        50% {
+          transform: translate(-2px, 4px) rotate(-2deg);
+        }
+        60% {
+          transform: translate(-4px, 2px) rotate(0deg);
+        }
+        70% {
+          transform: translate(4px, 2px) rotate(-3deg);
+        }
+        80% {
+          transform: translate(-2px, -2px) rotate(3deg);
+        }
+        90% {
+          transform: translate(2px, 4px) rotate(0deg);
+        }
         100% {
           transform: translate(0, 0) rotate(0deg);
         }
       }
+
       .sender-tag {
         font-size: 11px;
         font-weight: 600;
@@ -333,6 +289,7 @@
         display: block;
         pointer-events: none;
       }
+
       .heart-badge {
         position: absolute;
         bottom: -10px;
@@ -358,6 +315,54 @@
       .received .heart-badge {
         right: -8px;
       }
+
+      .break-container {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 80px;
+        height: 80px;
+        pointer-events: none;
+        z-index: 10;
+      }
+      .heart-path {
+        fill: #ff3b30;
+        stroke: none;
+        transform-origin: center;
+      }
+      .left-half {
+        animation: crackLeftSVG 0.9s forwards cubic-bezier(0.1, 0.7, 1, 0.1);
+      }
+      .right-half {
+        animation: crackRightSVG 0.9s forwards cubic-bezier(0.1, 0.7, 1, 0.1);
+      }
+      @keyframes crackLeftSVG {
+        0% {
+          transform: translate(0, 0) rotate(0deg);
+          opacity: 1;
+        }
+        20% {
+          transform: translate(-4px, -4px) rotate(-5deg);
+        }
+        100% {
+          transform: translate(-30px, 60px) rotate(-45deg);
+          opacity: 0;
+        }
+      }
+      @keyframes crackRightSVG {
+        0% {
+          transform: translate(0, 0) rotate(0deg);
+          opacity: 1;
+        }
+        20% {
+          transform: translate(4px, -4px) rotate(5deg);
+        }
+        100% {
+          transform: translate(30px, 60px) rotate(45deg);
+          opacity: 0;
+        }
+      }
       .big-heart-pop {
         position: absolute;
         top: 50%;
@@ -367,9 +372,6 @@
         pointer-events: none;
         opacity: 0;
         z-index: 10;
-      }
-      .animate-pop {
-        animation: popHeart 0.8s ease-out forwards;
       }
       @keyframes popHeart {
         0% {
@@ -385,6 +387,10 @@
           opacity: 0;
         }
       }
+      .animate-pop {
+        animation: popHeart 0.8s ease-out forwards;
+      }
+
       .reply-quote-block {
         background-color: rgba(0, 0, 0, 0.2);
         border-left: 3px solid rgba(255, 255, 255, 0.5);
@@ -407,8 +413,6 @@
         text-overflow: ellipsis;
         opacity: 0.8;
       }
-
-      /* --- INPUT --- */
       #replyPreviewBar {
         background-color: #1e1e1e;
         padding: 10px 20px;
@@ -425,6 +429,8 @@
         display: block;
         margin-bottom: 2px;
       }
+
+      /* --- Input Bar & Color Picker --- */
       .input-area {
         padding: 20px;
         border-top: 1px solid var(--insta-gray);
@@ -441,6 +447,11 @@
         cursor: pointer;
         padding: 5px;
       }
+      .icon-btn:hover {
+        opacity: 0.7;
+      }
+
+      /* Color Picker Styling */
       .color-wrapper {
         position: relative;
         width: 30px;
@@ -470,6 +481,7 @@
         z-index: 2;
         text-shadow: 0 0 2px black;
       }
+
       #msgInput {
         flex: 1;
         padding: 14px 24px;
@@ -480,6 +492,9 @@
         background: #262626;
         color: white;
       }
+      #msgInput:focus {
+        border-color: #555;
+      }
       #sendBtn {
         color: var(--insta-blue);
         background: none;
@@ -488,8 +503,10 @@
         font-size: 16px;
         cursor: pointer;
       }
+      #sendBtn:hover {
+        color: white;
+      }
 
-      /* --- CAMERA --- */
       #cameraOverlay {
         position: fixed;
         top: 0;
@@ -537,7 +554,6 @@
         display: none;
       }
 
-      /* --- TYPING & SEEN --- */
       #typingWrapper {
         display: none;
         flex-direction: column;
@@ -604,22 +620,10 @@
         <div id="activeList"></div>
       </header>
 
-      <div id="pinnedBar">
-        <div class="pin-slot" id="pinSlotMy">
-          <span class="pin-label">My Pin 📌</span>
-          <span class="pin-text" id="pinTextMy">No message pinned</span>
-          <span class="pin-icon">📌</span>
-        </div>
-        <div class="pin-slot" id="pinSlotOther">
-          <span class="pin-label">Their Pin 📌</span>
-          <span class="pin-text" id="pinTextOther">No message pinned</span>
-          <span class="pin-icon">📌</span>
-        </div>
-      </div>
-
       <div id="messages"></div>
 
       <div id="seenIndicator">Seen</div>
+
       <div id="typingWrapper">
         <div class="typing-label" id="typingLabel">Someone is typing...</div>
         <div id="typingIndicator">
@@ -654,10 +658,12 @@
         <input type="file" id="fileInput" accept="image/*" hidden />
         <button id="fileBtn" class="icon-btn">📎</button>
         <button id="cameraBtn" class="icon-btn">📷</button>
+
         <div class="color-wrapper" title="Pick Message Color">
           <span class="color-icon">🎨</span>
           <input type="color" id="colorInput" value="#3797f0" />
         </div>
+
         <input
           type="text"
           id="msgInput"
@@ -677,13 +683,6 @@
       </div>
     </div>
 
-    <div id="contextOverlay"></div>
-    <div id="contextMenu">
-      <button id="ctxPin">📌 Pin This</button>
-      <button id="ctxDelete">🗑️ Delete</button>
-      <button id="ctxCopy">📋 Copy Text</button>
-    </div>
-
     <script>
       const SUPABASE_URL = "https://xyvyocpdekeewoyvomuv.supabase.co";
       const SUPABASE_KEY =
@@ -700,10 +699,6 @@
       let myName = "";
       let userTimestamps = {};
 
-      // Store loaded messages to find pinned ones easily
-      let localMessages = [];
-      let selectedMsgId = null; // For context menu
-
       window.addEventListener("DOMContentLoaded", () => {
         myName = localStorage.getItem("chat-user");
         if (!myName) {
@@ -711,12 +706,14 @@
           localStorage.setItem("chat-user", myName);
         }
 
+        // --- LOAD SAVED COLOR ---
         const savedColor = localStorage.getItem("chat-color") || "#3797f0";
         const colorInput = document.getElementById("colorInput");
         colorInput.value = savedColor;
-        colorInput.addEventListener("change", (e) =>
-          localStorage.setItem("chat-color", e.target.value)
-        );
+
+        colorInput.addEventListener("change", (e) => {
+          localStorage.setItem("chat-color", e.target.value);
+        });
 
         const msgInput = document.getElementById("msgInput");
         const sendBtn = document.getElementById("sendBtn");
@@ -727,23 +724,10 @@
         const fileBtn = document.getElementById("fileBtn");
         const cameraBtn = document.getElementById("cameraBtn");
 
-        // Pinned elements
-        const pinnedBar = document.getElementById("pinnedBar");
-        const pinSlotMy = document.getElementById("pinSlotMy");
-        const pinTextMy = document.getElementById("pinTextMy");
-        const pinSlotOther = document.getElementById("pinSlotOther");
-        const pinTextOther = document.getElementById("pinTextOther");
-
-        // Context Menu elements
-        const contextMenu = document.getElementById("contextMenu");
-        const contextOverlay = document.getElementById("contextOverlay");
-        const ctxPin = document.getElementById("ctxPin");
-        const ctxDelete = document.getElementById("ctxDelete");
-        const ctxCopy = document.getElementById("ctxCopy");
-
         const typingWrapper = document.getElementById("typingWrapper");
         const typingLabel = document.getElementById("typingLabel");
         const seenIndicator = document.getElementById("seenIndicator");
+
         msgDiv.appendChild(seenIndicator);
         msgDiv.appendChild(typingWrapper);
 
@@ -753,16 +737,21 @@
         const closeCameraBtn = document.getElementById("closeCameraBtn");
         const canvas = document.getElementById("canvas");
 
+        // --- COMPLEMENTARY COLOR LOGIC ---
         function getComplementaryColor(hex) {
+          // Remove hash if present
           hex = hex.replace("#", "");
+          // Convert to RGB
           let r = parseInt(hex.substring(0, 2), 16);
           let g = parseInt(hex.substring(2, 4), 16);
           let b = parseInt(hex.substring(4, 6), 16);
+          // Invert
           r = (255 - r).toString(16).padStart(2, "0");
           g = (255 - g).toString(16).padStart(2, "0");
           b = (255 - b).toString(16).padStart(2, "0");
           return `#${r}${g}${b}`;
         }
+
         function formatTime(dateObj) {
           return dateObj.toLocaleTimeString([], {
             weekday: "short",
@@ -770,14 +759,21 @@
             minute: "2-digit",
           });
         }
+
         function linkify(text) {
           if (!text) return "";
           const urlPattern =
             /(\b(https?|ftp):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/gim;
-          return text.replace(
+          let result = text.replace(
             urlPattern,
-            '<a href="$1" target="_blank">$1</a>'
+            '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
           );
+          const pseudoUrlPattern = /(^|[^\/])(www\.[\S]+(\b|$))/gim;
+          result = result.replace(
+            pseudoUrlPattern,
+            '$1<a href="http://$2" target="_blank" rel="noopener noreferrer">$2</a>'
+          );
+          return result;
         }
 
         async function updateMySeenStatus() {
@@ -791,8 +787,30 @@
           } catch (e) {}
         }
 
-        function checkStatusLoop() {
-          // Just refresh active list visually, timestamp logic handled in fetch
+        async function checkStatusLoop() {
+          const { data: users } = await _supabase
+            .from("user_presence")
+            .select("*");
+          if (users) {
+            users.forEach((u) => {
+              userTimestamps[u.username] = new Date(u.last_seen);
+            });
+            if (lastSentMessageTime) {
+              const otherUser = users.find((u) => u.username !== myName);
+              if (otherUser) {
+                const seenTime = new Date(otherUser.last_seen);
+                const msgTime = new Date(lastSentMessageTime);
+                if (seenTime > msgTime) {
+                  seenIndicator.style.display = "block";
+                  const diffMins = Math.floor((new Date() - seenTime) / 60000);
+                  seenIndicator.innerText =
+                    diffMins < 2 ? "Seen" : `Seen ${diffMins}m`;
+                } else {
+                  seenIndicator.style.display = "none";
+                }
+              }
+            }
+          }
           renderActiveList();
         }
         setInterval(checkStatusLoop, 5000);
@@ -822,56 +840,7 @@
             .join("");
         }
 
-        // --- UPDATE PINNED HEADER ---
-        function updatePinnedHeader() {
-          // Find latest pinned for ME and THEM
-          const myPinned = localMessages
-            .slice()
-            .reverse()
-            .find((m) => m.sender === myName && m.is_pinned);
-          const otherPinned = localMessages
-            .slice()
-            .reverse()
-            .find((m) => m.sender !== myName && m.is_pinned);
-
-          if (myPinned || otherPinned) pinnedBar.style.display = "flex";
-          else pinnedBar.style.display = "none";
-
-          if (myPinned) {
-            pinTextMy.innerText = myPinned.content || "Image";
-            pinSlotMy.onclick = () =>
-              document
-                .getElementById(`msg-${myPinned.id}`)
-                .scrollIntoView({ behavior: "smooth", block: "center" });
-          } else {
-            pinTextMy.innerText = "Nothing pinned";
-          }
-
-          if (otherPinned) {
-            pinTextOther.innerText = otherPinned.content || "Image";
-            document.querySelector(
-              "#pinSlotOther .pin-label"
-            ).innerText = `${otherPinned.sender}'s Pin 📌`;
-            pinSlotOther.onclick = () =>
-              document
-                .getElementById(`msg-${otherPinned.id}`)
-                .scrollIntoView({ behavior: "smooth", block: "center" });
-          } else {
-            pinTextOther.innerText = "Nothing pinned";
-          }
-        }
-
         function renderMessage(data) {
-          // Add to local cache or update it
-          const existingIndex = localMessages.findIndex(
-            (m) => m.id === data.id
-          );
-          if (existingIndex >= 0) localMessages[existingIndex] = data;
-          else localMessages.push(data);
-
-          // Update header whenever a message renders/updates
-          updatePinnedHeader();
-
           const msgId = data.id;
           let rowDiv = document.getElementById(`msg-${msgId}`);
           let div;
@@ -880,11 +849,11 @@
             div = rowDiv.querySelector(".message");
             div.savedLikes = data.liked_by || [];
             updateLikeVisuals(div, div.savedLikes);
-            // Re-apply content in case pinned status changed visuals (optional)
             return;
           }
 
           typingWrapper.style.display = "none";
+
           const currentMsgTime = new Date(data.created_at);
           if (
             !lastMessageTime ||
@@ -913,53 +882,57 @@
           div.className = "message";
           div.savedLikes = data.liked_by || [];
 
+          // --- APPLY COLORS ---
+          // If the message has a specific color, apply it.
           if (data.user_color) {
-            div.style.backgroundColor = data.user_color;
-            div.style.color = getComplementaryColor(data.user_color);
+            const bgColor = data.user_color;
+            const textColor = getComplementaryColor(bgColor);
+
+            div.style.backgroundColor = bgColor;
+            div.style.color = textColor;
+
+            // We need to force links to inherit color for readability
+            // This is handled by CSS .message a { color: inherit; }
           } else {
+            // Fallback for old messages: sent is blue, received is dark gray
             if (isMe) div.style.backgroundColor = "var(--msg-sent)";
             else div.style.backgroundColor = "var(--msg-received)";
           }
 
-          // --- LONG PRESS MENU LOGIC ---
-          let pressTimer;
-          div.addEventListener(
-            "touchstart",
-            (e) => {
-              pressTimer = setTimeout(() => {
-                showContextMenu(
-                  e.touches[0].clientX,
-                  e.touches[0].clientY,
-                  data,
-                  isMe
-                );
-              }, 600);
-            },
-            { passive: true }
-          );
-          div.addEventListener("touchend", () => clearTimeout(pressTimer));
-          div.addEventListener("contextmenu", (e) => {
-            e.preventDefault();
-            showContextMenu(e.clientX, e.clientY, data, isMe);
-          });
-
-          // Double tap to like
           let lastTap = 0;
+          const handleLikeToggle = () => {
+            const isUnliking = div.savedLikes.includes(myName);
+            toggleLike(msgId, div.savedLikes);
+            if (isUnliking) {
+              const container = document.createElement("div");
+              container.className = "break-container";
+              container.innerHTML = `<svg viewBox="0 0 24 24" width="80" height="80"><path class="heart-path left-half" d="M12 21.35 l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 C2 5.42 4.42 3 7.5 3 c1.74 0 3.41.81 4.5 2.09 L 12 5 L 11 9 L 13 13 L 11 17 L 12 21.35 Z" /><path class="heart-path right-half" d="M12 21.35 L 11 17 L 13 13 L 11 9 L 12 5 C 13.09 3.81 14.76 3 16.5 3 C 19.58 3 22 5.42 22 8.5 c 0 3.78 -3.4 6.86 -8.55 11.54 L 12 21.35 Z" /></svg>`;
+              div.appendChild(container);
+              setTimeout(() => container.remove(), 1000);
+            } else {
+              const pop = document.createElement("div");
+              pop.className = "big-heart-pop animate-pop";
+              pop.innerText = "❤️";
+              div.appendChild(pop);
+              setTimeout(() => pop.remove(), 1000);
+            }
+          };
+
+          div.addEventListener("dblclick", (e) => {
+            e.preventDefault();
+            handleLikeToggle();
+          });
           div.addEventListener("touchend", (e) => {
             const currentTime = new Date().getTime();
             const tapLength = currentTime - lastTap;
             if (tapLength < 300 && tapLength > 0) {
               e.preventDefault();
-              handleLikeToggle(div, msgId);
+              handleLikeToggle();
             }
             lastTap = currentTime;
           });
-          div.addEventListener("dblclick", (e) => {
-            e.preventDefault();
-            handleLikeToggle(div, msgId);
-          });
 
-          // Swipe to reply
+          // --- SWIPE TO REPLY ---
           let startX = 0;
           let currentTranslate = 0;
           let isDragging = false;
@@ -983,11 +956,12 @@
             div.style.transition =
               "transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)";
             div.style.transform = "translateX(0px)";
-            if (currentTranslate > 50)
+            if (currentTranslate > 50) {
               initiateReply(
                 data.message_type === "image" ? "📷 Image" : data.content,
                 data.sender
               );
+            }
             currentTranslate = 0;
           };
           div.addEventListener(
@@ -1001,6 +975,10 @@
             { passive: false }
           );
           div.addEventListener("touchend", endDrag);
+          div.addEventListener("mousedown", (e) => startDrag(e.clientX));
+          div.addEventListener("mousemove", (e) => moveDrag(e.clientX, e));
+          div.addEventListener("mouseup", endDrag);
+          div.addEventListener("mouseleave", endDrag);
 
           let replyBlock = "";
           if (data.reply_to) {
@@ -1011,9 +989,9 @@
 
           let contentHtml = "";
           let isScreaming = false;
-          if (data.message_type === "image")
+          if (data.message_type === "image") {
             contentHtml = `<img src="${data.image_url}" class="chat-image" loading="lazy" />`;
-          else {
+          } else {
             const text = data.content || "";
             isScreaming = /[a-zA-Z]/.test(text) && text === text.toUpperCase();
             contentHtml = `<div class="text-content">${linkify(text)}</div>`;
@@ -1035,66 +1013,17 @@
               setTimeout(() => {
                 textDiv.classList.add("scream");
               }, 10);
+              textDiv.onanimationend = () => {
+                textDiv.classList.remove("scream");
+              };
             }
           }
+
           updateLikeVisuals(div, div.savedLikes);
           rowDiv.appendChild(div);
           msgDiv.insertBefore(rowDiv, seenIndicator);
           msgDiv.scrollTop = msgDiv.scrollHeight;
         }
-
-        // --- CONTEXT MENU FUNCTIONS ---
-        function showContextMenu(x, y, msgData, isMe) {
-          selectedMsgId = msgData.id;
-
-          // Adjust buttons based on who sent it
-          ctxDelete.style.display = isMe ? "block" : "none";
-          ctxPin.innerText = msgData.is_pinned
-            ? "🚫 Unpin Message"
-            : "📌 Pin Message";
-
-          contextMenu.style.display = "flex";
-          contextOverlay.style.display = "block";
-
-          // Positioning logic to keep in bounds
-          let posX = x + 10;
-          let posY = y + 10;
-          if (posX + 150 > window.innerWidth) posX = window.innerWidth - 160;
-          if (posY + 120 > window.innerHeight) posY = window.innerHeight - 130;
-
-          contextMenu.style.left = posX + "px";
-          contextMenu.style.top = posY + "px";
-        }
-
-        function hideContextMenu() {
-          contextMenu.style.display = "none";
-          contextOverlay.style.display = "none";
-          selectedMsgId = null;
-        }
-        contextOverlay.onclick = hideContextMenu;
-
-        ctxCopy.onclick = () => {
-          const msg = localMessages.find((m) => m.id === selectedMsgId);
-          if (msg && msg.content) navigator.clipboard.writeText(msg.content);
-          hideContextMenu();
-        };
-
-        ctxDelete.onclick = async () => {
-          if (!confirm("Delete this message?")) return;
-          await _supabase.from("messages").delete().eq("id", selectedMsgId);
-          hideContextMenu();
-        };
-
-        ctxPin.onclick = async () => {
-          const msg = localMessages.find((m) => m.id === selectedMsgId);
-          if (!msg) return;
-          // Toggle pin status
-          await _supabase
-            .from("messages")
-            .update({ is_pinned: !msg.is_pinned })
-            .eq("id", selectedMsgId);
-          hideContextMenu();
-        };
 
         function updateLikeVisuals(messageDiv, likedBy) {
           const badge = messageDiv.querySelector(".heart-badge");
@@ -1102,25 +1031,15 @@
           else badge.classList.remove("visible");
         }
 
-        async function handleLikeToggle(div, msgId) {
-          const isUnliking = div.savedLikes.includes(myName);
-          const newLikedBy = isUnliking
-            ? div.savedLikes.filter((name) => name !== myName)
-            : [...div.savedLikes, myName];
+        async function toggleLike(msgId, currentLikedBy) {
+          const alreadyLiked = currentLikedBy.includes(myName);
+          let newLikedBy = alreadyLiked
+            ? currentLikedBy.filter((name) => name !== myName)
+            : [...currentLikedBy, myName];
           await _supabase
             .from("messages")
             .update({ liked_by: newLikedBy })
             .eq("id", msgId);
-
-          if (isUnliking) {
-            // Nothing specific for unlike animation in this version, keep it simple
-          } else {
-            const pop = document.createElement("div");
-            pop.className = "big-heart-pop animate-pop";
-            pop.innerText = "❤️";
-            div.appendChild(pop);
-            setTimeout(() => pop.remove(), 1000);
-          }
         }
 
         function initiateReply(text, sender) {
@@ -1162,7 +1081,10 @@
           msgInput.placeholder = "Uploading...";
           fileBtn.disabled = true;
           cameraBtn.disabled = true;
+
+          // Get current color
           const myColor = document.getElementById("colorInput").value;
+
           const fileName = `${Date.now()}_captured.jpg`;
           const { error } = await _supabase.storage
             .from("chat-images")
@@ -1192,7 +1114,6 @@
         fileBtn.onclick = () => fileInput.click();
         fileInput.onchange = (e) => uploadAndSendImage(e.target.files[0]);
 
-        // Camera Logic
         async function startCamera() {
           try {
             cameraStream = await navigator.mediaDevices.getUserMedia({
@@ -1242,7 +1163,6 @@
                 msgDiv.removeChild(child);
             });
             lastMessageTime = null;
-            localMessages = [];
             data.forEach(renderMessage);
             checkStatusLoop();
             updateMySeenStatus();
@@ -1260,18 +1180,19 @@
             event: "typing",
             payload: { sender: myName, isTyping: false },
           });
+
+          // Get current color
           const myColor = document.getElementById("colorInput").value;
-          await _supabase
-            .from("messages")
-            .insert([
-              {
-                content: content,
-                sender: myName,
-                message_type: "text",
-                reply_to: currentReplyData,
-                user_color: myColor,
-              },
-            ]);
+
+          await _supabase.from("messages").insert([
+            {
+              content: content,
+              sender: myName,
+              message_type: "text",
+              reply_to: currentReplyData,
+              user_color: myColor, // Send the color
+            },
+          ]);
           if (currentReplyData)
             document.getElementById("cancelReplyBtn").click();
         }
@@ -1307,11 +1228,6 @@
             { event: "DELETE", schema: "public", table: "messages" },
             (payload) => {
               const el = document.getElementById(`msg-${payload.old.id}`);
-              // Remove from local cache
-              localMessages = localMessages.filter(
-                (m) => m.id !== payload.old.id
-              );
-              updatePinnedHeader();
               if (el) el.remove();
             }
           )
