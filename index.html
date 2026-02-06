@@ -45,18 +45,44 @@
 
         /* MESSAGES */
         #messages { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 6px; }
-        .message-row { display: flex; width: 100%; margin-bottom: 2px; }
+        
+        /* Message Row - Relative for icon positioning */
+        .message-row { 
+            display: flex; width: 100%; margin-bottom: 2px; 
+            position: relative; 
+            min-height: 40px;
+            align-items: center;
+        }
         .sent { justify-content: flex-end; }
         .received { justify-content: flex-start; }
-        
+
+        /* SWIPE ICON */
+        .reply-icon-swiping {
+            position: absolute;
+            top: 50%;
+            margin-top: -10px; /* Half of font-size roughly to center */
+            font-size: 20px;
+            color: #555;
+            opacity: 0;
+            z-index: 1;
+            pointer-events: none;
+        }
+        /* Icon Positioning logic */
+        .sent .reply-icon-swiping { right: 5px; } /* Own message: Icon on right */
+        .received .reply-icon-swiping { left: 5px; } /* Their message: Icon on left */
+
         /* BUBBLES */
-        .message { padding: 10px 15px; border-radius: 20px; max-width: 75%; font-size: 15px; position: relative; word-wrap: break-word; user-select: none; }
+        .message { 
+            padding: 10px 15px; border-radius: 20px; max-width: 75%; font-size: 15px; 
+            position: relative; word-wrap: break-word; user-select: none; 
+            z-index: 2; /* Sit above the reply icon */
+            transition: transform 0.1s linear; /* Smooth drag */
+            touch-action: pan-y; /* Allow vertical scroll, handle horizontal in JS */
+        }
         .sent .message { border-bottom-right-radius: 4px; }
         .received .message { border-bottom-left-radius: 4px; background: #262626; color: #fff; }
         
-        /* --- LIKE SYSTEM --- */
-        
-        /* 1. LIKING: The heart that flies to corner */
+        /* LIKE ANIMATIONS */
         .heart-pop {
             position: absolute; pointer-events: none; z-index: 20; font-size: 40px;
             animation: fly-corner 0.7s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
@@ -67,40 +93,24 @@
             100% { top: 100%; left: 100%; transform: translate(-100%, -100%) scale(0.2); opacity: 0; }
         }
 
-        /* 2. UNLIKING: SVG SPLIT ANIMATION */
         .broken-heart-svg {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 60px; height: 60px; pointer-events: none; z-index: 20;
-            overflow: visible;
+            width: 60px; height: 60px; pointer-events: none; z-index: 20; overflow: visible;
         }
-        .heart-shard {
-            fill: #ff3b30; /* Emoji Red */
-            stroke: #ff3b30;
-            stroke-width: 1px;
-            transform-origin: center center;
-        }
-        
-        /* Animate the Left Half */
-        .broken-heart-svg .left-shard {
-            animation: crack-left 0.8s cubic-bezier(0.1, 0.7, 1.0, 0.1) forwards;
-        }
+        .heart-shard { fill: #ff3b30; stroke: #ff3b30; stroke-width: 1px; transform-origin: center center; }
+        .broken-heart-svg .left-shard { animation: crack-left 0.8s cubic-bezier(0.1, 0.7, 1.0, 0.1) forwards; }
         @keyframes crack-left {
             0% { transform: translate(0, 0) rotate(0deg); opacity: 1; }
             30% { transform: translate(-6px, 0) rotate(-10deg); opacity: 1; }
             100% { transform: translate(-25px, 15px) rotate(-30deg); opacity: 0; }
         }
-
-        /* Animate the Right Half */
-        .broken-heart-svg .right-shard {
-            animation: crack-right 0.8s cubic-bezier(0.1, 0.7, 1.0, 0.1) forwards;
-        }
+        .broken-heart-svg .right-shard { animation: crack-right 0.8s cubic-bezier(0.1, 0.7, 1.0, 0.1) forwards; }
         @keyframes crack-right {
             0% { transform: translate(0, 0) rotate(0deg); opacity: 1; }
             30% { transform: translate(6px, 0) rotate(10deg); opacity: 1; }
             100% { transform: translate(25px, 15px) rotate(30deg); opacity: 0; }
         }
 
-        /* 3. The Badge */
         .liked-badge {
             position: absolute; bottom: -6px; right: -4px;
             width: 22px; height: 22px;
@@ -110,18 +120,12 @@
             animation: badge-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.5s backwards;
         }
         .sent .liked-badge { background: #000; }
-        @keyframes badge-pop {
-            from { transform: scale(0); }
-            to { transform: scale(1); }
-        }
+        @keyframes badge-pop { from { transform: scale(0); } to { transform: scale(1); } }
 
         /* SCREAM ANIMATION */
-        .scream {
-            font-weight: 900 !important; letter-spacing: 1px; animation: scream-pop 0.6s ease-out; z-index: 100; position: relative;
-        }
+        .scream { font-weight: 900 !important; letter-spacing: 1px; animation: scream-pop 0.6s ease-out; z-index: 100; position: relative; }
         .sent .scream { transform-origin: right center; }     
         .received .scream { transform-origin: left center; }
-
         @keyframes scream-pop {
             0% { transform: scale(1); }
             20% { transform: scale(1.55) rotate(-3deg); } 
@@ -136,6 +140,21 @@
         .game-icon { font-size: 30px; display: block; margin: 5px 0; }
         .game-text { font-size: 11px; font-weight: 700; color: #3797f0; text-transform: uppercase; letter-spacing: 1px; }
 
+        /* REPLY PREVIEW BAR */
+        #replyBar {
+            background: #1a1a1a;
+            border-top: 1px solid #333;
+            padding: 8px 15px;
+            display: none; justify-content: space-between; align-items: center;
+            animation: slideUp 0.2s ease-out;
+        }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        
+        .reply-info { display: flex; flex-direction: column; gap: 2px; border-left: 3px solid #3797f0; padding-left: 10px; }
+        .reply-to-user { font-size: 12px; font-weight: 700; color: #3797f0; }
+        .reply-to-text { font-size: 12px; color: #bbb; max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        #closeReplyBtn { background: none; border: none; color: #888; font-size: 20px; cursor: pointer; padding: 0 10px; }
+
         /* INPUT AREA */
         .input-area { padding: 10px; border-top: 1px solid #262626; display: flex; align-items: center; gap: 8px; background: #000; }
         .icon-btn { background: none; border: none; font-size: 22px; cursor: pointer; padding: 5px; transition: transform 0.1s; }
@@ -146,32 +165,17 @@
         #sendBtn { color: #3797f0; background: none; border: none; font-weight: 600; cursor: pointer; padding: 0 5px; }
 
         /* MODALS */
-        .full-modal {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95); z-index: 1000;
-            display: none; flex-direction: column; align-items: center; justify-content: center;
-        }
-
+        .full-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; display: none; flex-direction: column; align-items: center; justify-content: center; }
         #gameInfo { position: absolute; top: 20px; text-align: center; width: 100%; pointer-events: none; }
         #statusTitle { font-size: 24px; font-weight: 800; display: block; text-shadow: 0 2px 10px black; }
         #statusSub { font-size: 14px; color: #ddd; text-shadow: 0 2px 5px black; }
         #poolCanvas { background: #2e7d32; border: 15px solid #3e2723; border-radius: 12px; box-shadow: 0 20px 50px rgba(0,0,0,0.9); max-width: 95vw; max-height: 80vh; }
         #closeGameBtn { position: absolute; bottom: 30px; padding: 10px 25px; background: #333; color: white; border: none; border-radius: 30px; cursor: pointer; font-weight: 600; }
-
-        /* CAMERA INTERFACE */
         #cameraView { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
         #cameraControls { position: absolute; bottom: 40px; width: 100%; display: flex; justify-content: center; align-items: center; gap: 40px; }
-        #shutterBtn { 
-            width: 70px; height: 70px; border-radius: 50%; 
-            background: white; border: 4px solid rgba(255,255,255,0.3); 
-            cursor: pointer; transition: transform 0.1s;
-        }
+        #shutterBtn { width: 70px; height: 70px; border-radius: 50%; background: white; border: 4px solid rgba(255,255,255,0.3); cursor: pointer; transition: transform 0.1s; }
         #shutterBtn:active { transform: scale(0.9); background: #eee; }
-        #closeCamBtn {
-            font-size: 18px; color: white; background: rgba(0,0,0,0.5); 
-            width: 40px; height: 40px; border-radius: 50%; border: none; cursor: pointer;
-            display: flex; align-items: center; justify-content: center;
-        }
+        #closeCamBtn { font-size: 18px; color: white; background: rgba(0,0,0,0.5); width: 40px; height: 40px; border-radius: 50%; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; }
     </style>
 </head>
 <body>
@@ -182,37 +186,32 @@
     
     <div id="messages"></div>
 
+    <div id="replyBar">
+        <div class="reply-info">
+            <span class="reply-to-user" id="replyUser">Replying to...</span>
+            <span class="reply-to-text" id="replyText">Message content</span>
+        </div>
+        <button id="closeReplyBtn">✕</button>
+    </div>
+
     <div class="input-area">
         <input type="file" id="fileInput" hidden accept="image/*">
-        
         <button id="camBtn" class="icon-btn">📷</button>
         <button id="imgBtn" class="icon-btn">🖼️</button>
         <button id="newGameBtn" class="icon-btn">🎱</button>
-        
-        <div class="color-wrap">
-            <input type="color" id="colorInput" value="#3797f0">
-        </div>
-        
+        <div class="color-wrap"><input type="color" id="colorInput" value="#3797f0"></div>
         <input type="text" id="msgInput" placeholder="Message..." autocomplete="off" />
         <button id="sendBtn">Send</button>
     </div>
 
     <div id="gameModal" class="full-modal">
-        <div id="gameInfo">
-            <span id="statusTitle">Your Turn</span>
-            <span id="statusSub">Make your shot</span>
-        </div>
+        <div id="gameInfo"><span id="statusTitle">Your Turn</span><span id="statusSub">Make your shot</span></div>
         <canvas id="poolCanvas"></canvas>
         <button id="closeGameBtn">Close Game</button>
     </div>
-
     <div id="cameraModal" class="full-modal" style="background: black;">
         <video id="cameraView" autoplay playsinline></video>
-        <div id="cameraControls">
-            <button id="closeCamBtn">✕</button>
-            <button id="shutterBtn"></button>
-            <div style="width: 40px;"></div> 
-        </div>
+        <div id="cameraControls"><button id="closeCamBtn">✕</button><button id="shutterBtn"></button><div style="width: 40px;"></div></div>
     </div>
 
     <script type="module" src="pool.js"></script>
