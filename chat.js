@@ -201,7 +201,6 @@ function renderMessage(msg) {
         bubble.className = "message";
         if(isMe && msg.user_color) bubble.style.backgroundColor = msg.user_color;
         
-        // FIXED: Image loading handler
         const img = document.createElement('img');
         img.src = msg.content;
         img.onload = () => {
@@ -273,56 +272,84 @@ function renderMessage(msg) {
         await _supabase.from("messages").update({ liked_by: newLikes }).eq("id", msg.id);
     });
 
-    // --- SWIPE TO REPLY LOGIC (Bidirectional) ---
+    // --- SWIPE TO REPLY LOGIC (ROBUST VERSION) ---
     let startX = 0;
+    let startY = 0;
     let currentX = 0;
     let isSwiping = false;
+    let isScrolling = false;
 
+    // 1. Touch Start: Initialize everything
     bubble.addEventListener('touchstart', (e) => {
         startX = e.touches[0].clientX;
-        isSwiping = true;
+        startY = e.touches[0].clientY;
+        currentX = startX; // Reset currentX to start position!
+        isSwiping = false;
+        isScrolling = false;
         bubble.style.transition = 'none'; 
-    }, {passive: true});
+    }, {passive: true}); // Passive is OK here
 
+    // 2. Touch Move: Determine intent and lock
     bubble.addEventListener('touchmove', (e) => {
-        if (!isSwiping) return;
         currentX = e.touches[0].clientX;
-        const diff = currentX - startX;
-        const absDiff = Math.abs(diff);
+        const currentY = e.touches[0].clientY;
+        const diffX = currentX - startX;
+        const diffY = currentY - startY;
+        const absDiffX = Math.abs(diffX);
+        const absDiffY = Math.abs(diffY);
 
-        // Logic:
-        // If it's MY message (isMe), only allow Negative Diff (Swipe Left)
-        // If it's THEIR message (!isMe), only allow Positive Diff (Swipe Right)
-        
-        if (isMe) {
-            // My message -> Swipe Left
-            if (diff < 0 && absDiff < 150) {
-                bubble.style.transform = `translateX(${diff}px)`;
-                replyIcon.style.opacity = Math.min(absDiff / 60, 1);
-                replyIcon.style.transform = `scale(${Math.min(absDiff / 60, 1.2)})`;
-            }
-        } else {
-            // Their message -> Swipe Right
-            if (diff > 0 && absDiff < 150) {
-                bubble.style.transform = `translateX(${diff}px)`;
-                replyIcon.style.opacity = Math.min(absDiff / 60, 1);
-                replyIcon.style.transform = `scale(${Math.min(absDiff / 60, 1.2)})`;
+        // DECIDE: Is user Scrolling or Swiping?
+        if (!isSwiping && !isScrolling) {
+            // If vertical movement is stronger, they are scrolling the list
+            if (absDiffY > absDiffX && absDiffY > 5) {
+                isScrolling = true;
+                return; // Let browser handle scroll
+            } 
+            // If horizontal movement is stronger, they are swiping the message
+            else if (absDiffX > absDiffY && absDiffX > 5) {
+                isSwiping = true;
             }
         }
-    }, {passive: true});
 
+        // If locked into Swiping mode:
+        if (isSwiping) {
+            if(e.cancelable) e.preventDefault(); // STOP page scroll
+
+            // LOGIC: Sent (Me) -> Drag Left (Negative)
+            //        Received (Them) -> Drag Right (Positive)
+            
+            if (isMe) {
+                // Only allow LEFT drag for my messages
+                if (diffX < 0 && absDiffX < 150) {
+                    bubble.style.transform = `translateX(${diffX}px)`;
+                    replyIcon.style.opacity = Math.min(absDiffX / 60, 1);
+                    replyIcon.style.transform = `scale(${Math.min(absDiffX / 60, 1.2)})`;
+                }
+            } else {
+                // Only allow RIGHT drag for their messages
+                if (diffX > 0 && absDiffX < 150) {
+                    bubble.style.transform = `translateX(${diffX}px)`;
+                    replyIcon.style.opacity = Math.min(absDiffX / 60, 1);
+                    replyIcon.style.transform = `scale(${Math.min(absDiffX / 60, 1.2)})`;
+                }
+            }
+        }
+    }, {passive: false}); // MUST BE FALSE to allow preventDefault
+
+    // 3. Touch End: Snap back or Trigger Reply
     bubble.addEventListener('touchend', (e) => {
-        if (!isSwiping) return;
+        if (!isSwiping) return; // If we were scrolling, ignore this
+        
         isSwiping = false;
         const diff = currentX - startX;
         
         bubble.style.transition = 'transform 0.2s ease-out';
         bubble.style.transform = `translateX(0px)`;
-        
         replyIcon.style.opacity = 0;
 
-        // Trigger if pulled far enough in correct direction
+        // Trigger Reply if pulled far enough
         if (Math.abs(diff) > 70) { 
+            // Ensure direction matches ownership
             if ((isMe && diff < 0) || (!isMe && diff > 0)) {
                 if(navigator.vibrate) navigator.vibrate(10);
                 setReply(msg);
