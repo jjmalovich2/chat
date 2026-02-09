@@ -4,11 +4,17 @@ export class KnockoutGame {
         this.ctx = this.canvas.getContext('2d');
         this.onTurnEnd = onTurnEnd;
 
-        // Internal resolution variables
-        this.width = 0;
-        this.height = 0;
-        this.centerX = 0;
-        this.centerY = 0;
+        // Force canvas styling to prevent CSS layout bugs
+        this.canvas.style.display = 'block';
+        this.canvas.style.width = '100%';
+        this.canvas.style.height = '100%';
+        this.canvas.style.touchAction = 'none'; // Prevents scrolling while dragging
+
+        // Internal resolution
+        this.width = this.canvas.clientWidth;
+        this.height = this.canvas.clientHeight;
+        this.centerX = this.width / 2;
+        this.centerY = this.height / 2;
         this.rinkRadius = 0;
 
         // Configuration
@@ -42,27 +48,33 @@ export class KnockoutGame {
         window.addEventListener('touchend', this.handleEnd);
     }
 
+    // Completely fixes the "Down and to the Right" bug
+    // by ensuring internal resolution matches visual size 1:1
+    fixResolution() {
+        const rect = this.canvas.getBoundingClientRect();
+        
+        // Only resize if the display size has changed (prevents flickering)
+        if (this.canvas.width !== rect.width || this.canvas.height !== rect.height) {
+            this.canvas.width = rect.width;
+            this.canvas.height = rect.height; // Use full height
+            this.width = rect.width;
+            this.height = rect.height;
+            this.centerX = this.width / 2;
+            this.centerY = this.height / 2;
+            this.rinkRadius = Math.min(this.width, this.height) / 2 - 10;
+            this.btnRect = { x: this.width / 2 - 60, y: this.height - 70, w: 120, h: 45 };
+        }
+    }
+
     resize() {
-        // Get the display size of the canvas container
-        const rect = this.canvas.parentElement.getBoundingClientRect();
-        
-        // Set internal resolution to match display size exactly
-        this.canvas.width = rect.width;
-        this.canvas.height = rect.height || 450;
-        
-        this.width = this.canvas.width;
-        this.height = this.canvas.height;
-        this.centerX = this.width / 2;
-        this.centerY = this.height / 2;
-        this.rinkRadius = Math.min(this.width, this.height) / 2 - 10;
-        
-        // Update button position
-        this.btnRect = { x: this.width / 2 - 60, y: this.height - 70, w: 120, h: 45 };
+        this.fixResolution();
     }
 
     // --- GAME STATE MANAGEMENT ---
 
     setupNewGame() {
+        this.fixResolution(); // Ensure size is correct before placing penguins
+
         const p1 = 'p1';
         const p2 = 'p2';
         const penguins = [];
@@ -95,6 +107,8 @@ export class KnockoutGame {
     }
 
     loadGame(data, isMyTurn) {
+        this.fixResolution(); 
+
         this.matchData = JSON.parse(JSON.stringify(data)); 
         this.myPlayerId = isMyTurn ? (this.matchData.phase === 'p1_planning' ? 'p1' : 'p2') : 'spectator';
 
@@ -129,6 +143,11 @@ export class KnockoutGame {
     }
 
     loop() {
+        // If the window resized while playing, update immediately
+        if (this.canvas.width !== this.canvas.clientWidth) {
+            this.fixResolution();
+        }
+
         this.draw();
         
         if (this.state === 'resolving') {
@@ -138,14 +157,14 @@ export class KnockoutGame {
         this.animationId = requestAnimationFrame(this.loop.bind(this));
     }
 
-    // --- INPUT HANDLERS (FIXED HITBOXES) ---
+    // --- INPUT HANDLERS (Corrected) ---
 
     getPos(e) {
         const rect = this.canvas.getBoundingClientRect();
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
 
-        // HITBOX FIX: Calculate scale in case canvas is resized by CSS
+        // Strict mapping ratio
         const scaleX = this.canvas.width / rect.width;
         const scaleY = this.canvas.height / rect.height;
 
@@ -157,9 +176,13 @@ export class KnockoutGame {
 
     handleStart(e) {
         if (this.state !== 'planning') return;
+        
+        // 1. Ensure resolution is perfect before calculating hit logic
+        this.fixResolution();
+
         const pos = this.getPos(e);
 
-        // 1. Check Button Click
+        // 2. Check Button Click
         if (this.areAllMovesReady()) {
             if (pos.x > this.btnRect.x && pos.x < this.btnRect.x + this.btnRect.w &&
                 pos.y > this.btnRect.y && pos.y < this.btnRect.y + this.btnRect.h) {
@@ -168,14 +191,16 @@ export class KnockoutGame {
             }
         }
 
-        // 2. Check Penguin Click
-        for (let p of this.matchData.penguins) {
+        // 3. Check Penguin Click
+        // Iterate BACKWARDS so we click the one "on top" if they overlap slightly
+        for (let i = this.matchData.penguins.length - 1; i >= 0; i--) {
+            let p = this.matchData.penguins[i];
             if (!p.alive) continue;
             if (p.team !== this.myPlayerId) continue; 
 
             const dist = Math.hypot(pos.x - p.x, pos.y - p.y);
             
-            // Hitbox is slightly larger than visual radius to make it easier to grab
+            // Hitbox 1.2x bigger for easier grabbing
             if (dist < p.radius * 1.5) { 
                 this.dragTarget = p;
                 this.dragStartPos = pos; 
