@@ -1,4 +1,5 @@
 import { PoolGame } from './pool.js';
+import { KnockoutGame } from './knockout.js';
 
 // --- CONFIG ---
 const SUPABASE_URL = "https://xyvyocpdekeewoyvomuv.supabase.co";
@@ -83,6 +84,7 @@ async function sendMessage(content, type = 'text') {
         replySender = replyingTo.sender;
         if (replyingTo.message_type === 'image') replyText = "📷 Photo";
         else if (replyingTo.message_type === 'game_pool') replyText = "🎱 8-Ball Pool";
+        else if (replyingTo.message_type === 'game_knockout') replyText = "🐧 Penguin Knockout"; // <--- Add this
         else replyText = replyingTo.content;
     }
 
@@ -176,6 +178,47 @@ el.btnGame.onclick = () => {
 };
 el.closeGame.onclick = () => { el.modal.style.display = 'none'; };
 
+// --- KNOCKOUT PENGUIN GAME ---
+let knockoutGame = null;
+
+function initKnockout() {
+    // Reuse poolCanvas
+    if (!knockoutGame) {
+        knockoutGame = new KnockoutGame('poolCanvas', (gameData) => {
+            el.modal.style.display = 'none';
+            sendMessage(JSON.stringify(gameData), 'game_knockout');
+        });
+    }
+    knockoutGame.resize();
+}
+
+const btnKnockout = document.getElementById("knockoutBtn");
+if (btnKnockout) {
+    btnKnockout.onclick = () => {
+        el.modal.style.display = 'flex';
+        initKnockout();
+        el.statusTitle.innerText = "Penguin Knockout";
+        el.statusSub.innerText = "Drag to Flick!";
+        knockoutGame.setupNewGame();
+    };
+}
+
+function openKnockoutFromChat(gameData, isMyTurn) {
+    el.modal.style.display = 'flex';
+    initKnockout();
+    
+    if (gameData.gameOver) {
+        el.statusTitle.innerText = "Game Over";
+        const winner = gameData.winner === 'p1' ? "Red Team" : "Blue Team";
+        el.statusSub.innerText = `${winner} Won!`;
+    } else {
+        el.statusTitle.innerText = "Penguin Knockout";
+        el.statusSub.innerText = isMyTurn ? "Your Turn (Drag to Flick)" : "Waiting for opponent...";
+    }
+    
+    knockoutGame.loadGame(gameData);
+}
+
 function openGameFromChat(gameData, isMyTurn) {
     el.modal.style.display = 'flex';
     initPool();
@@ -232,6 +275,13 @@ function renderMessage(msg) {
         img.src = msg.content;
         img.onload = () => { el.msgs.scrollTop = el.msgs.scrollHeight; };
         bubble.appendChild(img);
+    }
+    else if(msg.message_type === 'game_knockout') {
+        bubble.className = "message game-bubble";
+        bubble.innerHTML += `<span class="game-icon">🐧</span><span class="game-text">${isMe?"Played":"Your Turn"}</span>`;
+        bubble.onclick = (e) => {
+            if(!e.target.closest('.reply-context')) openKnockoutFromChat(JSON.parse(msg.content), !isMe);
+        };
     }
     else {
         bubble.className = "message";
