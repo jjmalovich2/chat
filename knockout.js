@@ -4,19 +4,20 @@ export class KnockoutGame {
         this.ctx = this.canvas.getContext('2d');
         this.onTurnEnd = onTurnEnd;
 
-        this.width = this.canvas.width;
-        this.height = this.canvas.height;
-        this.centerX = this.width / 2;
-        this.centerY = this.height / 2;
-        this.rinkRadius = Math.min(this.width, this.height) / 2 - 10;
+        // Internal resolution variables
+        this.width = 0;
+        this.height = 0;
+        this.centerX = 0;
+        this.centerY = 0;
+        this.rinkRadius = 0;
 
         // Configuration
         this.PENGUIN_RADIUS = 22.5; 
-        this.MAX_POWER = 15; // Max speed
-        this.DRAG_SCALE = 0.15; // How sensitive the drag is
+        this.MAX_POWER = 15; 
+        this.DRAG_SCALE = 0.15; 
 
         // UI State
-        this.state = 'idle'; // 'planning', 'resolving', 'gameover', 'replay'
+        this.state = 'idle'; 
         this.matchData = null;
         this.myPlayerId = 'p1'; 
 
@@ -25,7 +26,7 @@ export class KnockoutGame {
         this.dragStartPos = { x: 0, y: 0 };
 
         // Button dimensions
-        this.btnRect = { x: this.width / 2 - 60, y: this.height - 70, w: 120, h: 45 };
+        this.btnRect = { x: 0, y: 0, w: 120, h: 45 };
 
         // Bind inputs
         this.handleStart = this.handleStart.bind(this);
@@ -42,14 +43,20 @@ export class KnockoutGame {
     }
 
     resize() {
+        // Get the display size of the canvas container
         const rect = this.canvas.parentElement.getBoundingClientRect();
+        
+        // Set internal resolution to match display size exactly
         this.canvas.width = rect.width;
         this.canvas.height = rect.height || 450;
+        
         this.width = this.canvas.width;
         this.height = this.canvas.height;
         this.centerX = this.width / 2;
         this.centerY = this.height / 2;
         this.rinkRadius = Math.min(this.width, this.height) / 2 - 10;
+        
+        // Update button position
         this.btnRect = { x: this.width / 2 - 60, y: this.height - 70, w: 120, h: 45 };
     }
 
@@ -60,9 +67,8 @@ export class KnockoutGame {
         const p2 = 'p2';
         const penguins = [];
         
-        // Setup Triangle formation (Spread out more)
-        const gap = 80; // WIDER GAP
-        const startOffset = 140; // FURTHER BACK
+        const gap = 80; 
+        const startOffset = 140; 
 
         // P1 (Red) Left
         penguins.push(this.createPenguin(this.centerX - startOffset, this.centerY, p1));
@@ -132,20 +138,28 @@ export class KnockoutGame {
         this.animationId = requestAnimationFrame(this.loop.bind(this));
     }
 
-    // --- INPUT HANDLERS (Improved Flick) ---
+    // --- INPUT HANDLERS (FIXED HITBOXES) ---
 
     getPos(e) {
         const rect = this.canvas.getBoundingClientRect();
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        return { x: clientX - rect.left, y: clientY - rect.top };
+
+        // HITBOX FIX: Calculate scale in case canvas is resized by CSS
+        const scaleX = this.canvas.width / rect.width;
+        const scaleY = this.canvas.height / rect.height;
+
+        return {
+            x: (clientX - rect.left) * scaleX,
+            y: (clientY - rect.top) * scaleY
+        };
     }
 
     handleStart(e) {
         if (this.state !== 'planning') return;
         const pos = this.getPos(e);
 
-        // 1. Check Button Click (Only if button is visible)
+        // 1. Check Button Click
         if (this.areAllMovesReady()) {
             if (pos.x > this.btnRect.x && pos.x < this.btnRect.x + this.btnRect.w &&
                 pos.y > this.btnRect.y && pos.y < this.btnRect.y + this.btnRect.h) {
@@ -160,9 +174,11 @@ export class KnockoutGame {
             if (p.team !== this.myPlayerId) continue; 
 
             const dist = Math.hypot(pos.x - p.x, pos.y - p.y);
-            if (dist < p.radius * 2) { // Generous hit area
+            
+            // Hitbox is slightly larger than visual radius to make it easier to grab
+            if (dist < p.radius * 1.5) { 
                 this.dragTarget = p;
-                this.dragStartPos = pos; // Record where we clicked
+                this.dragStartPos = pos; 
                 e.preventDefault();
                 return;
             }
@@ -174,15 +190,10 @@ export class KnockoutGame {
         e.preventDefault();
         const pos = this.getPos(e);
 
-        // Slingshot Math: Drag Back -> Shoot Forward
-        // Vector is based on distance from Click Origin to Current Mouse
         const dx = this.dragStartPos.x - pos.x; 
         const dy = this.dragStartPos.y - pos.y;
         
-        // Calculate raw power
         const rawPower = Math.hypot(dx, dy);
-        
-        // Scale and Cap
         let speed = rawPower * this.DRAG_SCALE;
         if (speed > this.MAX_POWER) speed = this.MAX_POWER;
 
@@ -194,14 +205,11 @@ export class KnockoutGame {
 
     handleEnd(e) {
         this.dragTarget = null;
-        // We DO NOT clear plannedVx/Vy here. It stays persistent.
     }
 
     areAllMovesReady() {
         if (!this.matchData) return false;
-        // Get all my alive penguins
         const myPenguins = this.matchData.penguins.filter(p => p.team === this.myPlayerId && p.alive);
-        // Check if every single one has a velocity > 0
         return myPenguins.every(p => Math.hypot(p.plannedVx, p.plannedVy) > 0.5);
     }
 
@@ -241,7 +249,6 @@ export class KnockoutGame {
                 p.vy = move.vy;
                 p2Idx++;
             }
-            // Clear planned vectors so they don't show during replay
             p.plannedVx = 0;
             p.plannedVy = 0;
         });
@@ -249,7 +256,7 @@ export class KnockoutGame {
 
     updatePhysics() {
         let isMoving = false;
-        const friction = 0.97; // Slidier ice
+        const friction = 0.97; 
 
         this.matchData.penguins.forEach(p => {
             if (!p.alive) return;
@@ -265,7 +272,6 @@ export class KnockoutGame {
                 p.vy = 0;
             }
 
-            // Boundary Death
             const dist = Math.hypot(p.x - this.centerX, p.y - this.centerY);
             if (dist > this.rinkRadius) {
                 p.alive = false;
@@ -362,18 +368,13 @@ export class KnockoutGame {
         // UI: Planning Phase
         if (this.state === 'planning') {
             
-            // 1. Draw Arrows for ALL penguins with plans
             this.matchData.penguins.forEach(p => {
-                // Only show my arrows
                 if (!p.alive || p.team !== this.myPlayerId) return;
-                
-                // If it has a plan (vector length > small amount), draw it
                 if (Math.hypot(p.plannedVx, p.plannedVy) > 0.5) {
                     this.drawArrow(p);
                 }
             });
 
-            // 2. Draw Button (Only if All Ready)
             if (this.areAllMovesReady()) {
                 this.ctx.fillStyle = '#27ae60';
                 this.ctx.beginPath();
@@ -394,7 +395,6 @@ export class KnockoutGame {
                 
                 this.ctx.fillText(btnText, this.btnRect.x + this.btnRect.w/2, this.btnRect.y + this.btnRect.h/2);
             } else {
-                // Instructions
                 this.ctx.fillStyle = 'white';
                 this.ctx.font = '14px sans-serif';
                 this.ctx.textAlign = 'center';
@@ -427,10 +427,9 @@ export class KnockoutGame {
             this.ctx.strokeStyle = '#2980b9';
         }
 
-        // Highlight if it needs a move
         if (this.state === 'planning' && p.team === this.myPlayerId) {
              const hasMove = Math.hypot(p.plannedVx, p.plannedVy) > 0.5;
-             this.ctx.lineWidth = hasMove ? 2 : 4; // Thick border if not moved yet
+             this.ctx.lineWidth = hasMove ? 2 : 4; 
              this.ctx.strokeStyle = hasMove ? '#333' : 'white';
         } else {
              this.ctx.lineWidth = 2;
@@ -439,7 +438,6 @@ export class KnockoutGame {
         this.ctx.fill();
         this.ctx.stroke();
 
-        // Face
         this.ctx.fillStyle = 'white';
         const eyeOffset = 7;
         this.ctx.beginPath();
@@ -462,8 +460,6 @@ export class KnockoutGame {
     }
 
     drawArrow(p) {
-        // Draw the vector based on plannedVx/Vy
-        // Multiplier to make the line long enough to see well
         const lineScale = 5.0; 
         const endX = p.x + p.plannedVx * lineScale; 
         const endY = p.y + p.plannedVy * lineScale;
@@ -472,13 +468,11 @@ export class KnockoutGame {
         this.ctx.moveTo(p.x, p.y);
         this.ctx.lineTo(endX, endY);
         
-        // DARK GREY LINE
         this.ctx.strokeStyle = '#333333'; 
-        this.ctx.lineWidth = 4; // Thicker line
+        this.ctx.lineWidth = 4;
         this.ctx.lineCap = 'round';
         this.ctx.stroke();
 
-        // Arrow head
         const angle = Math.atan2(p.plannedVy, p.plannedVx);
         const headLen = 12;
         this.ctx.beginPath();
