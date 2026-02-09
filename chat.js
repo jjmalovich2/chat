@@ -280,7 +280,7 @@ function renderMessage(msg) {
         else bubble.style.backgroundColor = "#262626";
         
         const textSpan = document.createElement("div");
-        textSpan.innerHTML = msg.content;
+        textSpan.innerHTML = linkify(msg.content);
         bubble.appendChild(textSpan);
         
         if (msg.content && msg.content.length > 1 && msg.content === msg.content.toUpperCase() && /[A-Z]/.test(msg.content)) {
@@ -422,6 +422,16 @@ function updateMessageUI(updatedMsg) {
         bubble.appendChild(badge);
         bubble.dataset.liked = "true";
     }
+}
+
+function linkify(text) {
+    // pattern to detect URLs starting with http:// or https://
+    const urlRegex = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
+    
+    return text.replace(urlRegex, function(url) {
+        // Return the URL wrapped in an anchor tag, opening in a new tab
+        return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline;">${url}</a>`;
+    });
 }
 
 // --- PRESENCE & SYNC ---
