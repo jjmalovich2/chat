@@ -14,9 +14,7 @@ if (!myName) {
     localStorage.setItem("chat-user", myName);
 }
 let myColor = localStorage.getItem("chat-color") || "#3797f0";
-
-// --- STATE ---
-let replyingTo = null; 
+let myIP = null; // Store IP for banning logic
 
 // --- DOM ELEMENTS ---
 const el = {
@@ -27,8 +25,8 @@ const el = {
     file: document.getElementById("fileInput"),
     btnImg: document.getElementById("imgBtn"),
     btnCam: document.getElementById("camBtn"),
-    btnGame: document.getElementById("newGameBtn"), // Pool Button
-    btnKnockout: document.getElementById("knockoutBtn"), // Penguin Button
+    btnGame: document.getElementById("newGameBtn"), 
+    btnKnockout: document.getElementById("knockoutBtn"),
     modal: document.getElementById("gameModal"),
     closeGame: document.getElementById("closeGameBtn"),
     statusTitle: document.getElementById("statusTitle"),
@@ -44,7 +42,52 @@ const el = {
     closeReply: document.getElementById("closeReplyBtn")
 };
 
-// Set initial color
+// --- SECURITY & BAN SYSTEM ---
+async function checkBanStatus() {
+    try {
+        // 1. Get the user's IP
+        const res = await fetch('https://api.ipify.org?format=json');
+        const data = await res.json();
+        myIP = data.ip;
+
+        // 2. Check if this IP is in the ban list
+        const { data: banned } = await _supabase
+            .from('banned_ips')
+            .select('*')
+            .eq('ip', myIP)
+            .single();
+
+        if (banned) {
+            document.body.innerHTML = `
+                <div style="display:flex; justify-content:center; align-items:center; height:100vh; background:#111; color:red; flex-direction:column;">
+                    <h1 style="font-size:3rem;">🚫 BANNED</h1>
+                    <p style="color:white;">Access denied by administrator.</p>
+                </div>
+            `;
+            throw new Error("User is banned"); 
+        }
+    } catch (err) {
+        if(err.message === "User is banned") throw err;
+        console.error("IP Check failed or API blocked:", err);
+    }
+}
+// Run immediately
+checkBanStatus();
+
+
+// --- HELPER: URL LINKIFIER ---
+function linkify(text) {
+    if (!text) return "";
+    const urlRegex = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
+    return text.replace(urlRegex, function(url) {
+        return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline;">${url}</a>`;
+    });
+}
+
+// --- STATE ---
+let replyingTo = null; 
+
+// Set initial color in UI
 if (el.color) el.color.value = myColor;
 if (el.color) el.color.addEventListener("change", (e) => {
     myColor = e.target.value;
@@ -75,6 +118,16 @@ if(el.closeReply) el.closeReply.onclick = clearReply;
 async function sendMessage(content, type = 'text') {
     let finalContent = content;
     
+    // Check for Admin Command
+    if (type === 'text' && content.startsWith('/ban ')) {
+        const targetName = content.split(' ')[1];
+        if (targetName) {
+            banUser(targetName);
+            el.input.value = "";
+            return; // Don't send the command to chat
+        }
+    }
+
     // Prepare reply data
     let replyText = null;
     let replySender = null;
@@ -94,7 +147,8 @@ async function sendMessage(content, type = 'text') {
         user_color: myColor,
         liked_by: [],
         reply_to_text: replyText,
-        reply_to_sender: replySender
+        reply_to_sender: replySender,
+        ip_address: myIP // Send IP for potential future moderation
     };
     
     await _supabase.from("messages").insert([payload]);
@@ -105,6 +159,39 @@ async function sendMessage(content, type = 'text') {
 
 if(el.send) el.send.onclick = () => { if(el.input.value.trim()) sendMessage(el.input.value.trim()); };
 if(el.input) el.input.onkeydown = (e) => { if(e.key==="Enter" && el.input.value.trim()) sendMessage(el.input.value.trim()); };
+
+// --- ADMIN: BAN FUNCTION ---
+async function banUser(targetName) {
+    if (!confirm(`Are you sure you want to IP BAN ${targetName}?`)) return;
+
+    // 1. Find the user's IP from their last message
+    const { data: msgs } = await _supabase
+        .from('messages')
+        .select('ip_address')
+        .eq('sender', targetName)
+        .not('ip_address', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+    if (!msgs || msgs.length === 0) {
+        alert(`Could not find IP for ${targetName}. Have they spoken recently?`);
+        return;
+    }
+
+    const targetIP = msgs[0].ip_address;
+
+    // 2. Add to Ban Table
+    const { error } = await _supabase
+        .from('banned_ips')
+        .insert([{ ip: targetIP }]);
+
+    if (error) {
+        alert("Error banning user: " + error.message);
+    } else {
+        alert(`${targetName} (IP: ${targetIP}) has been banned.`);
+        sendMessage(`🔨 SYSTEM: ${targetName} has been banned.`);
+    }
+}
 
 // --- FILE UPLOADS & CAMERA ---
 async function uploadFile(file) {
@@ -199,7 +286,6 @@ function initKnockout() {
     knockoutGame.resize();
 }
 
-// Ensure button exists before attaching listener
 if (el.btnKnockout) {
     el.btnKnockout.onclick = () => {
         el.modal.style.display = 'flex';
@@ -208,8 +294,6 @@ if (el.btnKnockout) {
         el.statusSub.innerText = "Drag to Flick!";
         knockoutGame.setupNewGame();
     };
-} else {
-    console.error("Knockout Button not found! Check index.html ID='knockoutBtn'");
 }
 
 function openKnockoutFromChat(gameData, isMyTurn) {
@@ -246,7 +330,7 @@ function renderMessage(msg) {
         replyBox.className = "reply-context";
         replyBox.innerHTML = `
             <span class="reply-sender-name">${msg.reply_to_sender}</span>
-            <span class="reply-preview-text">${msg.reply_to_text}</span>
+            <span class="reply-preview-text">${linkify(msg.reply_to_text)}</span>
         `;
         bubble.appendChild(replyBox);
     }
@@ -268,21 +352,46 @@ function renderMessage(msg) {
     }
     else if (msg.message_type === 'image') {
         bubble.className = "message";
-        if(isMe && msg.user_color) bubble.style.backgroundColor = msg.user_color;
+        // Apply color to image border if desired, or background
+        bubble.style.borderLeft = `4px solid ${msg.user_color || '#3797f0'}`;
         const img = document.createElement('img');
         img.src = msg.content;
         img.onload = () => { el.msgs.scrollTop = el.msgs.scrollHeight; };
         bubble.appendChild(img);
     }
     else {
+        // --- TEXT MESSAGES ---
         bubble.className = "message";
-        if(isMe) bubble.style.backgroundColor = msg.user_color || "#3797f0";
-        else bubble.style.backgroundColor = "#262626";
+        
+        // COLOR LOGIC:
+        if (isMe) {
+            // My messages: Full background color
+            bubble.style.backgroundColor = msg.user_color || "#3797f0";
+            // Ensure text is readable (simple check: if color is white/light, use dark text? 
+            // For now assuming user picks readable colors or we stick to white text)
+        } else {
+            // Others: Dark background, but Colored Border to show who they are
+            bubble.style.backgroundColor = "#262626";
+            bubble.style.borderLeft = `5px solid ${msg.user_color || '#3797f0'}`;
+        }
+
+        // Name Tag for others (Optional, but helps with color ID)
+        if (!isMe) {
+            const nameTag = document.createElement("div");
+            nameTag.style.fontSize = "10px";
+            nameTag.style.color = msg.user_color || "#ccc";
+            nameTag.style.marginBottom = "2px";
+            nameTag.style.fontWeight = "bold";
+            nameTag.innerText = msg.sender;
+            bubble.appendChild(nameTag);
+        }
         
         const textSpan = document.createElement("div");
+        // APPLY LINKIFY HERE
         textSpan.innerHTML = linkify(msg.content);
         bubble.appendChild(textSpan);
         
+        // Scream feature
         if (msg.content && msg.content.length > 1 && msg.content === msg.content.toUpperCase() && /[A-Z]/.test(msg.content)) {
             bubble.classList.add('scream');
         }
@@ -299,7 +408,7 @@ function renderMessage(msg) {
         bubble.appendChild(badge);
     }
 
-    // Double Click Logic
+    // Double Click Like Logic
     bubble.addEventListener('dblclick', async (e) => {
         e.stopPropagation(); e.preventDefault();
         const { data: currentMsg } = await _supabase.from('messages').select('liked_by').eq('id', msg.id).single();
@@ -422,16 +531,6 @@ function updateMessageUI(updatedMsg) {
         bubble.appendChild(badge);
         bubble.dataset.liked = "true";
     }
-}
-
-function linkify(text) {
-    // pattern to detect URLs starting with http:// or https://
-    const urlRegex = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/ig;
-    
-    return text.replace(urlRegex, function(url) {
-        // Return the URL wrapped in an anchor tag, opening in a new tab
-        return `<a href="${url}" target="_blank" rel="noopener noreferrer" style="color: inherit; text-decoration: underline;">${url}</a>`;
-    });
 }
 
 // --- PRESENCE & SYNC ---
