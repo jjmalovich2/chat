@@ -27,7 +27,8 @@ const el = {
     file: document.getElementById("fileInput"),
     btnImg: document.getElementById("imgBtn"),
     btnCam: document.getElementById("camBtn"),
-    btnGame: document.getElementById("newGameBtn"),
+    btnGame: document.getElementById("newGameBtn"), // Pool Button
+    btnKnockout: document.getElementById("knockoutBtn"), // Penguin Button
     modal: document.getElementById("gameModal"),
     closeGame: document.getElementById("closeGameBtn"),
     statusTitle: document.getElementById("statusTitle"),
@@ -43,8 +44,9 @@ const el = {
     closeReply: document.getElementById("closeReplyBtn")
 };
 
-el.color.value = myColor;
-el.color.addEventListener("change", (e) => {
+// Set initial color
+if (el.color) el.color.value = myColor;
+if (el.color) el.color.addEventListener("change", (e) => {
     myColor = e.target.value;
     localStorage.setItem("chat-color", myColor);
     updateStatus(myStatus);
@@ -55,13 +57,10 @@ function setReply(msg) {
     replyingTo = msg;
     el.replyBar.style.display = "flex";
     el.replyUser.innerText = `Replying to ${msg.sender}`;
-    if (msg.message_type === 'image') {
-        el.replyText.innerText = "🖼️ Photo";
-    } else if (msg.message_type === 'game_pool') {
-        el.replyText.innerText = "🎱 8-Ball Pool";
-    } else {
-        el.replyText.innerText = msg.content;
-    }
+    if (msg.message_type === 'image') el.replyText.innerText = "📷 Photo";
+    else if (msg.message_type === 'game_pool') el.replyText.innerText = "🎱 8-Ball Pool";
+    else if (msg.message_type === 'game_knockout') el.replyText.innerText = "🐧 Penguin Knockout";
+    else el.replyText.innerText = msg.content;
     el.input.focus();
 }
 
@@ -70,7 +69,7 @@ function clearReply() {
     el.replyBar.style.display = "none";
 }
 
-el.closeReply.onclick = clearReply;
+if(el.closeReply) el.closeReply.onclick = clearReply;
 
 // --- MESSAGING ---
 async function sendMessage(content, type = 'text') {
@@ -84,7 +83,7 @@ async function sendMessage(content, type = 'text') {
         replySender = replyingTo.sender;
         if (replyingTo.message_type === 'image') replyText = "📷 Photo";
         else if (replyingTo.message_type === 'game_pool') replyText = "🎱 8-Ball Pool";
-        else if (replyingTo.message_type === 'game_knockout') replyText = "🐧 Penguin Knockout"; // <--- Add this
+        else if (replyingTo.message_type === 'game_knockout') replyText = "🐧 Penguin Knockout";
         else replyText = replyingTo.content;
     }
 
@@ -104,8 +103,8 @@ async function sendMessage(content, type = 'text') {
     resetIdleTimer();
 }
 
-el.send.onclick = () => { if(el.input.value.trim()) sendMessage(el.input.value.trim()); };
-el.input.onkeydown = (e) => { if(e.key==="Enter" && el.input.value.trim()) sendMessage(el.input.value.trim()); };
+if(el.send) el.send.onclick = () => { if(el.input.value.trim()) sendMessage(el.input.value.trim()); };
+if(el.input) el.input.onkeydown = (e) => { if(e.key==="Enter" && el.input.value.trim()) sendMessage(el.input.value.trim()); };
 
 // --- FILE UPLOADS & CAMERA ---
 async function uploadFile(file) {
@@ -117,8 +116,8 @@ async function uploadFile(file) {
     sendMessage(publicData.publicUrl, 'image');
 }
 
-el.btnImg.onclick = () => el.file.click();
-el.file.onchange = (e) => uploadFile(e.target.files[0]);
+if(el.btnImg) el.btnImg.onclick = () => el.file.click();
+if(el.file) el.file.onchange = (e) => uploadFile(e.target.files[0]);
 
 let stream = null;
 async function startCamera() {
@@ -149,9 +148,9 @@ function takePhoto() {
         stopCamera();
     }, "image/jpeg", 0.8);
 }
-el.btnCam.onclick = startCamera;
-el.closeCam.onclick = stopCamera;
-el.shutter.onclick = takePhoto;
+if(el.btnCam) el.btnCam.onclick = startCamera;
+if(el.closeCam) el.closeCam.onclick = stopCamera;
+if(el.shutter) el.shutter.onclick = takePhoto;
 
 // --- POOL GAME ---
 let poolGame = null;
@@ -161,14 +160,10 @@ function initPool() {
             el.modal.style.display = 'none';
             sendMessage(JSON.stringify(turnData), 'game_pool');
         });
-        poolGame.onReplayFinished = () => {
-            el.statusTitle.innerText = "Your Turn";
-            el.statusSub.innerText = "Take your shot!";
-        };
     }
     poolGame.resize();
 }
-el.btnGame.onclick = () => {
+if(el.btnGame) el.btnGame.onclick = () => {
     el.modal.style.display = 'flex';
     initPool();
     el.statusTitle.innerText = "New Game";
@@ -176,48 +171,7 @@ el.btnGame.onclick = () => {
     poolGame.setupNewGame();
     resetIdleTimer();
 };
-el.closeGame.onclick = () => { el.modal.style.display = 'none'; };
-
-// --- KNOCKOUT PENGUIN GAME ---
-let knockoutGame = null;
-
-function initKnockout() {
-    // Reuse poolCanvas
-    if (!knockoutGame) {
-        knockoutGame = new KnockoutGame('poolCanvas', (gameData) => {
-            el.modal.style.display = 'none';
-            sendMessage(JSON.stringify(gameData), 'game_knockout');
-        });
-    }
-    knockoutGame.resize();
-}
-
-const btnKnockout = document.getElementById("knockoutBtn");
-if (btnKnockout) {
-    btnKnockout.onclick = () => {
-        el.modal.style.display = 'flex';
-        initKnockout();
-        el.statusTitle.innerText = "Penguin Knockout";
-        el.statusSub.innerText = "Drag to Flick!";
-        knockoutGame.setupNewGame();
-    };
-}
-
-function openKnockoutFromChat(gameData, isMyTurn) {
-    el.modal.style.display = 'flex';
-    initKnockout();
-    
-    if (gameData.gameOver) {
-        el.statusTitle.innerText = "Game Over";
-        const winner = gameData.winner === 'p1' ? "Red Team" : "Blue Team";
-        el.statusSub.innerText = `${winner} Won!`;
-    } else {
-        el.statusTitle.innerText = "Penguin Knockout";
-        el.statusSub.innerText = isMyTurn ? "Your Turn (Drag to Flick)" : "Waiting for opponent...";
-    }
-    
-    knockoutGame.loadGame(gameData);
-}
+if(el.closeGame) el.closeGame.onclick = () => { el.modal.style.display = 'none'; };
 
 function openGameFromChat(gameData, isMyTurn) {
     el.modal.style.display = 'flex';
@@ -233,13 +187,51 @@ function openGameFromChat(gameData, isMyTurn) {
     }
 }
 
+// --- KNOCKOUT PENGUIN GAME ---
+let knockoutGame = null;
+function initKnockout() {
+    if (!knockoutGame) {
+        knockoutGame = new KnockoutGame('poolCanvas', (gameData) => {
+            el.modal.style.display = 'none';
+            sendMessage(JSON.stringify(gameData), 'game_knockout');
+        });
+    }
+    knockoutGame.resize();
+}
+
+// Ensure button exists before attaching listener
+if (el.btnKnockout) {
+    el.btnKnockout.onclick = () => {
+        el.modal.style.display = 'flex';
+        initKnockout();
+        el.statusTitle.innerText = "Penguin Knockout";
+        el.statusSub.innerText = "Drag to Flick!";
+        knockoutGame.setupNewGame();
+    };
+} else {
+    console.error("Knockout Button not found! Check index.html ID='knockoutBtn'");
+}
+
+function openKnockoutFromChat(gameData, isMyTurn) {
+    el.modal.style.display = 'flex';
+    initKnockout();
+    if (gameData.gameOver) {
+        el.statusTitle.innerText = "Game Over";
+        const winner = gameData.winner === 'p1' ? "Red Team" : "Blue Team";
+        el.statusSub.innerText = `${winner} Won!`;
+    } else {
+        el.statusTitle.innerText = "Penguin Knockout";
+        el.statusSub.innerText = isMyTurn ? "Your Turn (Drag to Flick)" : "Waiting for opponent...";
+    }
+    knockoutGame.loadGame(gameData);
+}
+
 // --- MESSAGE RENDERING ---
 function renderMessage(msg) {
     const isMe = msg.sender === myName;
     const row = document.createElement("div");
     row.className = `message-row ${isMe ? "sent" : "received"}`;
     
-    // REPLY ICON
     const replyIcon = document.createElement("div");
     replyIcon.className = "reply-icon-swiping";
     replyIcon.innerHTML = "↩️"; 
@@ -247,8 +239,8 @@ function renderMessage(msg) {
 
     const bubble = document.createElement("div");
     bubble.dataset.id = msg.id;
-    
-    // 1. RENDER REPLY CONTEXT
+
+    // 1. Render Reply Context
     if (msg.reply_to_text) {
         const replyBox = document.createElement("div");
         replyBox.className = "reply-context";
@@ -259,7 +251,7 @@ function renderMessage(msg) {
         bubble.appendChild(replyBox);
     }
     
-    // 2. RENDER MAIN CONTENT
+    // 2. Render Main Content
     if(msg.message_type === 'game_pool') {
         bubble.className = "message game-bubble";
         bubble.innerHTML += `<span class="game-icon">🎱</span><span class="game-text">${isMe?"Played":"Your Turn"}</span>`;
@@ -267,21 +259,20 @@ function renderMessage(msg) {
             if(!e.target.closest('.reply-context')) openGameFromChat(JSON.parse(msg.content), !isMe);
         };
     } 
-    else if (msg.message_type === 'image') {
-        bubble.className = "message";
-        if(isMe && msg.user_color) bubble.style.backgroundColor = msg.user_color;
-        
-        const img = document.createElement('img');
-        img.src = msg.content;
-        img.onload = () => { el.msgs.scrollTop = el.msgs.scrollHeight; };
-        bubble.appendChild(img);
-    }
     else if(msg.message_type === 'game_knockout') {
         bubble.className = "message game-bubble";
         bubble.innerHTML += `<span class="game-icon">🐧</span><span class="game-text">${isMe?"Played":"Your Turn"}</span>`;
         bubble.onclick = (e) => {
             if(!e.target.closest('.reply-context')) openKnockoutFromChat(JSON.parse(msg.content), !isMe);
         };
+    }
+    else if (msg.message_type === 'image') {
+        bubble.className = "message";
+        if(isMe && msg.user_color) bubble.style.backgroundColor = msg.user_color;
+        const img = document.createElement('img');
+        img.src = msg.content;
+        img.onload = () => { el.msgs.scrollTop = el.msgs.scrollHeight; };
+        bubble.appendChild(img);
     }
     else {
         bubble.className = "message";
@@ -297,7 +288,6 @@ function renderMessage(msg) {
         }
     }
 
-    // --- LIKE BADGE ---
     const likesList = msg.liked_by || [];
     const isLikedByMe = likesList.includes(myName);
     bubble.dataset.liked = isLikedByMe ? "true" : "false";
@@ -309,7 +299,7 @@ function renderMessage(msg) {
         bubble.appendChild(badge);
     }
 
-    // --- DOUBLE CLICK LIKE ---
+    // Double Click Logic
     bubble.addEventListener('dblclick', async (e) => {
         e.stopPropagation(); e.preventDefault();
         const { data: currentMsg } = await _supabase.from('messages').select('liked_by').eq('id', msg.id).single();
@@ -350,7 +340,7 @@ function renderMessage(msg) {
         await _supabase.from("messages").update({ liked_by: newLikes }).eq("id", msg.id);
     });
 
-    // --- SWIPE LOGIC (Mouse + Touch) ---
+    // Swipe Logic
     let startX = 0;
     let currentX = 0;
     let isDragging = false;
@@ -367,12 +357,12 @@ function renderMessage(msg) {
         const absDiff = Math.abs(diff);
 
         let translate = 0;
-        if (isMe) { // Me -> Drag Left
+        if (isMe) {
             if (diff < 0) {
                 if(e.cancelable && absDiff > 5) e.preventDefault(); 
                 translate = Math.max(diff, -100); 
             }
-        } else { // Them -> Drag Right
+        } else {
             if (diff > 0) {
                 if(e.cancelable && absDiff > 5) e.preventDefault();
                 translate = Math.min(diff, 100);
@@ -403,7 +393,6 @@ function renderMessage(msg) {
         }
     };
 
-    // Events
     bubble.addEventListener('mousedown', (e) => startDrag(e.clientX));
     window.addEventListener('mousemove', (e) => moveDrag(e.clientX, e));
     window.addEventListener('mouseup', endDrag);
@@ -417,7 +406,6 @@ function renderMessage(msg) {
     el.msgs.scrollTop = el.msgs.scrollHeight;
 }
 
-// --- UPDATE UI WHEN DB CHANGES ---
 function updateMessageUI(updatedMsg) {
     const bubble = document.querySelector(`.message[data-id="${updatedMsg.id}"]`);
     if(!bubble) return;
